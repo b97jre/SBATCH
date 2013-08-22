@@ -30,9 +30,17 @@ public class SBATCHinfo {
 	
 	
 	
-
+	public static void help(){
+		System.out.println("Here I should write down which programs I have written scritps for");
+	}
+	
 	public boolean run(Hashtable<String,String> T){
 		boolean allInfo = true;
+		
+		if(!T.containsKey("-pNr") && !T.containsKey("-email")){
+			System.out.println("must contain project number (-pNr) and email(-email)");
+			help();
+		}
 		projectNumber= Functions.getValue(T, "-pNr", "b2010035");
 		email = Functions.getValue(T, "-email", "johan.reimegard@scilifelab.se");
 		module =null;
