@@ -30,6 +30,7 @@ public class GATK {
 	String knownSNPVCF;
 	String knownIndelVCF;
 	String targetIntervals;
+	String nucleicAcid;
 	int memory;
 	int cutoff;
 	int padding;
@@ -64,10 +65,13 @@ public class GATK {
 
 	public void run(Hashtable<String,String> T){
 
+		
+		
 		String inDir, logDir;
 		inDir = logDir = null;
 		boolean allPresent = true;
 
+		
 
 		String timeStamp = Functions.getValue(T, "-TS", Functions.getDateTime());
 		SBATCHinfo sbatch = new SBATCHinfo();
@@ -75,6 +79,13 @@ public class GATK {
 			allPresent = false;
 			return;
 		}
+		
+		picardDir= Functions.getValue(T, "-picardDir", "/bubo/sw/apps/bioinfo/picard/1.92/kalkyl/");
+		GATKdir= Functions.getValue(T, "-GATKDir", "/bubo/sw/apps/bioinfo/GATK/2.5.2/");
+		time = Functions.getValue(T, "-time", "3:00:00");
+
+		
+		
 		if(T.containsKey("-i"))
 			inDir= Functions.getValue(T, "-i", ".");
 		else{
@@ -89,32 +100,31 @@ public class GATK {
 			System.out.println("must contain ReferenceFile -R ");
 			allPresent = false;
 		}
-		picardDir= Functions.getValue(T, "-picardDir", "/bubo/home/h17/johanr/bin");
-		GATKdir= Functions.getValue(T, "-GATKDir", "/bubo/home/h17/johanr/bin");
-		time = Functions.getValue(T, "-time", "3:00:00");
+		
+		if(T.containsKey("-RNA"))this.nucleicAcid="RNA";
+		else this.nucleicAcid="DNA";	
+				
+		if(!T.containsKey("-time"))
+			System.out.println("must contain likely time -time now set to default 3:00:00");
+		if(T.containsKey("-UnifiedGenotyper"))this.HaploTypeCaller=false;
+		else this.HaploTypeCaller=true;
+
+
 		cutoff = Functions.getInt(T, "-L", -1);
 
 
-		if(!T.containsKey("-time"))
-			System.out.println("must contain likely time -time now set to default 3:00:00");
-
-
-		if(T.containsKey("-UnifiedGenotyper"))this.HaploTypeCaller=false;
-		else this.HaploTypeCaller=true;
 
 
 		knownSNPVCF = Functions.getValue(T,"-knownSNPs", null);
 		if(IOTools.fileExists(IOTools.getCurrentPath()+"/"+knownSNPVCF))
 			knownSNPVCF=IOTools.getCurrentPath()+"/"+knownSNPVCF;
 
-
-
 		knownIndelVCF = Functions.getValue(T,"-knownIndels", null);
-		targetIntervals = Functions.getValue(T,"-targetIntervals", null);
-		
-		
 		if(IOTools.fileExists(IOTools.getCurrentPath()+"/"+knownIndelVCF))
 			knownIndelVCF=IOTools.getCurrentPath()+"/"+knownIndelVCF;
+
+		targetIntervals = Functions.getValue(T,"-targetIntervals", null);
+		
 
 		this.PRIORITIZE=true;
 		if(T.containsKey("-UNIQUIFY"))PRIORITIZE=false;
@@ -630,7 +640,7 @@ public class GATK {
 						bamFile = ReassignOneMappingQuality(EW, bamFile, memory, this.GATKdir,this.Reference, suffix);
 					}
 					if(T.containsKey("-ReAlign"))
-						bamFile = ReAlign(EW, bamFile, memory, this.GATKdir,this.Reference, suffix,knownSNPVCF,knownIndelVCF,targetIntervals,ReassignOneMappingQuality);
+						bamFile = ReAlign(EW, bamFile, memory, this.GATKdir,this.Reference, suffix,knownSNPVCF,knownIndelVCF,targetIntervals);
 					if(T.containsKey("-BQSR"))
 						bamFile = BQSR(EW, bamFile, memory, this.GATKdir,this.Reference, suffix,knownSNPVCF,knownIndelVCF);
 					if(T.containsKey("-BQSRprint"))
@@ -652,17 +662,19 @@ public class GATK {
 					EW.println();
 					EW.println("cd "+ outDir);
 
-					// takes care of merging, correct naming of bam files and marking dulicates
-					String bamFile = Picard.preGATK(EW, sbatch, timestamp, outDir, fileNames, T, this.picardDir,this.memory ,this.suffix);
+					// takes care of merging, correct naming of bam files and marking duplicates
+					String bamFile = Picard.preGATK(EW, sbatch, timestamp, outDir, fileNames, T, this.picardDir,this.memory ,this.suffix,this.nucleicAcid);
 					
 					// Changes suffix from sam to bam
 					if(suffix.lastIndexOf("sam")>-1){
 						this.suffix=this.suffix.substring(0,suffix.lastIndexOf("sam"))+"bam";
 					}
-				
+					// check if it is RNA or DNA and change score scheme accordingly
+					boolean ReassignOneMappingQuality = false;
+					if(this.nucleicAcid.compareTo("RNA")== 0) ReassignOneMappingQuality=true;
 					
 					// takes care of realining and recalibration
-					phase1(EW, bamFile, memory, this.picardDir, this.GATKdir,this.Reference, suffix,knownSNPVCF,knownIndelVCF,targetIntervals,true);
+					phase1(EW, bamFile, memory, this.picardDir, this.GATKdir,this.Reference, suffix,knownSNPVCF,knownIndelVCF,targetIntervals,ReassignOneMappingQuality);
 					EW.println();
 					EW.println();
 					EW.println("wait");
@@ -681,7 +693,10 @@ public class GATK {
 
 						String bamFile = fileNames.get(i);
 						// takes care of realining and recalibration
-						phase1(EW, bamFile, memory, this.picardDir, this.GATKdir,this.Reference, suffix,knownSNPVCF,knownIndelVCF,targetIntervals,true);
+						boolean ReassignOneMappingQuality = false;
+						if(this.nucleicAcid.compareTo("RNA")== 0) ReassignOneMappingQuality=true;
+
+						phase1(EW, bamFile, memory, this.picardDir, this.GATKdir,this.Reference, suffix,knownSNPVCF,knownIndelVCF,targetIntervals,ReassignOneMappingQuality);
 						EW.println();
 						EW.println();
 						EW.println("wait");
@@ -767,11 +782,11 @@ public class GATK {
 				String 	sbatchFileName = outDir+"/scripts/"+timestamp+"_"+i+"_phaseSNPs_GATK.sbatch";
 				generalSbatchScript.println("sbatch "+ sbatchFileName);
 				ExtendedWriter EW = new ExtendedWriter(new FileWriter(sbatchFileName));
-				sbatch.printSBATCHinfo(EW,outDir,timestamp,i,"GATK_phase1", time);
+				sbatch.printSBATCHinfo(EW,outDir,timestamp,i,"GATK_phaseSNPs", time);
 				EW.println();
 				EW.println("cd "+ outDir);
-					
-				String commandLine = ReadBackedPhasing(23, this.GATKdir, bamFile, this.Reference, bamFile+".phased.vcf", this.knownSNPVCF,10.0);
+				
+				String commandLine = ReadBackedPhasing(this.memory, this.GATKdir, bamFile, this.Reference, bamFile+".phased.vcf", this.knownSNPVCF,10.0);
 				EW.println(commandLine);
 				System.out.println(commandLine);
 
@@ -799,7 +814,9 @@ public class GATK {
 			EW.println();
 		}
 
-		bamFile = ReAlign(EW, bamFile, memory, GATKDir, Reference, suffix, knownSNPVCF, knownIndelsVCF,targetIntervals,ReassignOneMappingQuality);
+		if(ReassignOneMappingQuality)
+			bamFile = ReassignOneMappingQuality(EW, bamFile, memory, GATKDir,Reference, suffix);
+		bamFile = ReAlign(EW, bamFile, memory, GATKDir, Reference, suffix, knownSNPVCF, knownIndelsVCF,targetIntervals);
 		bamFile = BQSR(EW, bamFile, memory, GATKDir, Reference, suffix, knownSNPVCF, knownIndelsVCF);
 		bamFile = ReduceReads(EW, bamFile, memory, GATKDir, Reference);
 
@@ -824,7 +841,7 @@ public class GATK {
 
 
 
-	public static String ReAlign( ExtendedWriter EW, String bamFile, int memory, String GATKDir,String Reference, String suffix, String knownSNPVCF, String knownIndelsVCF, String targetIntervals , boolean ReassignOneMappingQuality){
+	public static String ReAlign( ExtendedWriter EW, String bamFile, int memory, String GATKDir,String Reference, String suffix, String knownSNPVCF, String knownIndelsVCF, String targetIntervals ){
 		
 		String baseName = bamFile.substring(0,bamFile.lastIndexOf(suffix));
 		if(targetIntervals == null){
@@ -836,10 +853,7 @@ public class GATK {
 			EW.println();
 			EW.println("echo Create Intervals finished");
 			EW.println();
-			
-			targetIntervals = baseName+".intervals";
-			
-			
+			targetIntervals = baseName+"intervals";
 		}
 
 		
@@ -847,17 +861,13 @@ public class GATK {
 		
 		String commandLine = LocalRealignment(memory,GATKDir, bamFile,Reference, baseName, knownIndelsVCF,targetIntervals);
 		EW.println("# LocalRealignment  ");
-		if(ReassignOneMappingQuality){
-			commandLine = ReassignOneMappingQuality(commandLine);
-			EW.println("# change mapping score for RNA seq data  ");
-		}
 		EW.println(commandLine);
 		EW.println();
 
 		EW.println("echo Local Realignment finished");
 		EW.println();
 
-		return baseName+".real.bam";
+		return baseName+"real.bam";
 	}
 
 	public static String BQSR( ExtendedWriter EW, String bamFile, int memory, String GATKDir,String Reference, String suffix, String knownSNPVCF, String knownIndelsVCF){
@@ -1063,7 +1073,7 @@ public class GATK {
 				"-I "+bamFile+ " "+
 				"-R "+reference+" "+
 				"-T RealignerTargetCreator "+
-				"-o "+baseName+".intervals";
+				"-o "+baseName+"intervals";
 		if(knownIndelsVCF!=null)
 			commandLine+=" -known "+knownIndelsVCF;
 
@@ -1108,7 +1118,7 @@ public class GATK {
 				"-R "+reference+" "+
 				"-T IndelRealigner "+
 				"-targetIntervals "+targetIntervals+" "+
-				"-o "+baseName+".real.bam";
+				"-o "+baseName+"real.bam";
 		if(knownSNPVCF!=null)
 			commandLine+=" -known "+knownSNPVCF;
 
@@ -1213,6 +1223,8 @@ public class GATK {
 
 
 
+		
+		
 
 		String commandLine = "java -Xmx"+memory+"g -jar "+GATKDir+"/GenomeAnalysisTK.jar "+
 				"-R "+reference+" "+

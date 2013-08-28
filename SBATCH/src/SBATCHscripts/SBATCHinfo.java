@@ -17,12 +17,20 @@ public class SBATCHinfo {
 
 	public static void main(String []args){
 		int length = args.length;
+		
 		for (int i = 0; i < length; i++){
 			args[i] = args[i].trim();
 			System.out.print(args[i]+" ");
 		}
 		System.out.println();
+		
+		
 		Hashtable<String,String> T = Functions.parseCommandLine(args);
+		SBATCHinfo SBATCH = new SBATCHinfo();
+		
+		if(!SBATCH.run(T)){
+			System.out.println("script did not run properly becuase some input was missing."); 
+		}
 	}
 	
 	
@@ -40,6 +48,7 @@ public class SBATCHinfo {
 		if(!T.containsKey("-pNr") && !T.containsKey("-email")){
 			System.out.println("must contain project number (-pNr) and email(-email)");
 			help();
+			return false;
 		}
 		projectNumber= Functions.getValue(T, "-pNr", "b2010035");
 		email = Functions.getValue(T, "-email", "johan.reimegard@scilifelab.se");

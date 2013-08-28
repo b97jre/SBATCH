@@ -80,21 +80,17 @@ public class SamtoolsSBATCH {
 		if(T.containsKey("-index")) this.index = true;
 		if(T.containsKey("-All")) {sort = header = view = index = flagstat = true;}
 
-
-
-		String program = Functions.getValue(T, "-samtools", "all");
-
 		if(T.containsKey("-merge")) this.merge = true;
 
 
 		if(allPresent)
-			samtoolsTop(sbatch, timeStamp,suffix, program);
+			samtoolsTop(sbatch, timeStamp,suffix);
 		else
 			System.out.println("\n\nAborting run because of missing arguments for samtools.");
 	}
 
 
-	public void samtoolsTop(SBATCHinfo sbatch, String timeStamp,String suffix,String program){
+	public void samtoolsTop(SBATCHinfo sbatch, String timeStamp,String suffix){
 		try{
 			if(!IOTools.isDir(projectDir+"/scripts"))
 				IOTools.mkDir(projectDir+"/scripts");

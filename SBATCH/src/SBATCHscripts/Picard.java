@@ -18,7 +18,7 @@ public class Picard {
 	String time;
 	String projectDir;
 	String suffix;
-	String jarDir;
+	String picardDir;
 	int memory;
 
 	boolean strandSpecifik;
@@ -61,11 +61,11 @@ public class Picard {
 			System.out.println("must contain inDirectory -i ");
 			allPresent = false;
 		}
-		jarDir= Functions.getValue(T, "-jDir", "/bubo/home/h17/johanr/bin");
+		picardDir= Functions.getValue(T, "-jDir", "/bubo/sw/apps/bioinfo/picard/1.92/kalkyl/");
 		time = Functions.getValue(T, "-time", "3:00:00");
 
-		if(!T.containsKey("-jDir"))
-			System.out.println("must contain directory where picard jar files are kept. -jDir  now set to default /bubo/home/h17/johanr/bin");
+		if(!T.containsKey("-picardDir"))
+			System.out.println("must contain directory where picard jar files are kept. -picardDir  now set to default /bubo/sw/apps/bioinfo/picard/1.92/kalkyl/");
 		if(T.containsKey("-time"))
 			System.out.println("must contain likely time -time now set to default 3:00:00");
 
@@ -128,7 +128,7 @@ public class Picard {
 
 	
 	
-	public static String preGATK( ExtendedWriter EW, SBATCHinfo sbatch ,String timestamp,String outDir,  ArrayList <String> fileNames,Hashtable<String,String> T,String picardDir, int memory, String suffix){
+	public static String preGATK( ExtendedWriter EW, SBATCHinfo sbatch ,String timestamp,String outDir,  ArrayList <String> fileNames,Hashtable<String,String> T,String picardDir, int memory, String suffix, String Nucleotide){
 
 
 		/*				
@@ -157,7 +157,7 @@ public class Picard {
 			System.out.println(fileNames.get(i));
 			String bamFile = fileNames.get(i);
 			String[] info =bamFile.split("_");
-			String Name, Nucleotide, Barcode, Lane;
+			String Name,  Barcode, Lane;
 			Name = Nucleotide = Barcode = Lane = null;
 			if(info.length >  3){
 				Name = info[0];
@@ -278,11 +278,11 @@ public class Picard {
 			EW.println();
 			EW.println("cd "+ outDir);
 			if(T.containsKey("-makrDuplicates")){
-				bamFile = markDuplicates(EW, bamFile, memory, jarDir,suffix)+"."+suffix;
+				bamFile = markDuplicates(EW, bamFile, memory, picardDir,suffix)+"."+suffix;
 			}
 			if(T.containsKey("-SortSam")){
 				String sortOrder = Functions.getValue(T, "-SORT_ORDER", "coordinate");
-				bamFile = SortSam(EW, bamFile, memory,jarDir,suffix, sortOrder)+"."+suffix;
+				bamFile = SortSam(EW, bamFile, memory,picardDir,suffix, sortOrder)+"."+suffix;
 			}
 			if(T.containsKey("-preGATK")){
 				System.out.println("Asumes that the sam filename has the following order RGSM_DNA_RGPU_RGLB_WHATEVER for DNA or");
@@ -308,7 +308,7 @@ public class Picard {
 					String RGID = Functions.getValue(T, "-RGID", RGSM+"_"+Replicate+"_"+RGPU+"_"+RGLB+"_RNA_"+Lane+"_"+Tissue);
 
 
-					prepareForGATK(EW, bamFile, memory, jarDir,  suffix, RGID, RGLB, RGPL, RGPU, RGSM, "coordinate");
+					prepareForGATK(EW, bamFile, memory, picardDir,  suffix, RGID, RGLB, RGPL, RGPU, RGSM, "coordinate");
 				}else{
 					
 					String[] info =bamFile.split("_");
@@ -330,7 +330,7 @@ public class Picard {
 
 				
 					
-					prepareForGATK(EW, bamFile, memory, jarDir, suffix, RGID, RGLB, RGPL, RGPU, RGSM, "coordinate");
+					prepareForGATK(EW, bamFile, memory, picardDir, suffix, RGID, RGLB, RGPL, RGPU, RGSM, "coordinate");
 
 				}
 
