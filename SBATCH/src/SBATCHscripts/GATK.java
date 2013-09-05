@@ -431,7 +431,7 @@ public class GATK {
 
 
 
-	public void GATKPhase2(  ExtendedWriter MasterShellScriptFile, SBATCHinfo sbatch ,String timestamp,String outDir,Hashtable<String,String> T){
+	public void GATKPhase2( ExtendedWriter MasterShellScriptFile, SBATCHinfo sbatch ,String timestamp,String outDir,Hashtable<String,String> T){
 
 		/*				
 		for each sample (asumed to be in same dir)
