@@ -13,6 +13,6 @@
 	<classpathentry kind="lib" path="/Users/johanreimegard/Google Drive/bin/jars/jfreechart-1.0.9.jar"/>
 	<classpathentry kind="lib" path="/Users/johanreimegard/Google Drive/bin/jars/jprogram.jar"/>
 	<classpathentry kind="lib" path="/Users/johanreimegard/Google Drive/bin/jars/xerces.jar"/>
-	<classpathentry kind="lib" path="/Users/johanreimegard/Google Drive/bin/HTStools.jar"/>
+	<classpathentry kind="lib" path="/HTStools/bin"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

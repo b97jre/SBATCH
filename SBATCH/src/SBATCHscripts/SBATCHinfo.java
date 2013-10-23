@@ -6,49 +6,54 @@ import general.ExtendedWriter;
 import general.Functions;
 import general.IOTools;
 
+
+
+
 public class SBATCHinfo {
 
 
 	private String projectNumber;
 	private String email;
 	private String[] module;
-	
-	
+
+
 
 	public static void main(String []args){
 		int length = args.length;
-		
+
 		for (int i = 0; i < length; i++){
 			args[i] = args[i].trim();
 			System.out.print(args[i]+" ");
 		}
 		System.out.println();
-		
-		
+
+
 		Hashtable<String,String> T = Functions.parseCommandLine(args);
 		SBATCHinfo SBATCH = new SBATCHinfo();
-		
+
 		if(!SBATCH.run(T)){
 			System.out.println("script did not run properly becuase some input was missing."); 
 		}
 	}
-	
-	
+
+
 	public SBATCHinfo(){}
-	
-	
-	
+
+
+
 	public static void help(){
 		System.out.println("Here I should write down which programs I have written scritps for");
 	}
-	
+
 	public boolean run(Hashtable<String,String> T){
 		boolean allInfo = true;
-		
+
 		if(!T.containsKey("-pNr") && !T.containsKey("-email")){
-			System.out.println("must contain project number (-pNr) and email(-email)");
-			help();
-			return false;
+			if(!T.containsKey("-interactive")){
+				System.out.println("must contain project number (-pNr) and email(-email) or be interactive (-interactive)");
+				help();
+				return false;
+			}
 		}
 		projectNumber= Functions.getValue(T, "-pNr", "b2010035");
 		email = Functions.getValue(T, "-email", "johan.reimegard@scilifelab.se");
@@ -63,7 +68,7 @@ public class SBATCHinfo {
 				module[0]=modules;
 			}
 		}
-		
+
 		if(T.containsKey("-STAR")){
 			STAR sbatch = new STAR();
 			sbatch.run(T);
@@ -84,11 +89,17 @@ public class SBATCHinfo {
 			deNovoAssembly sbatch = new deNovoAssembly();
 			sbatch.run(T);
 		}
+		if(T.containsKey("-deNovoAnalysis")){
+			analyseDeNovoTranscripts sbatch = new analyseDeNovoTranscripts();
+			sbatch.run(T);
+		}
+
+		
 		if(T.containsKey("-extension")){
 			deNovoExtension sbatch = new deNovoExtension();
 			sbatch.run(T);
 		}
-		
+
 		if(T.containsKey("-fastQC")){
 			FastQCSBATCH sbatch = new FastQCSBATCH();
 			sbatch.run(T);
@@ -152,6 +163,16 @@ public class SBATCHinfo {
 			script.run(T);
 
 		}
+		if(T.containsKey("-merge")){
+			Merge script = new Merge();
+			script.run(T);
+
+		}
+		else{
+			GeneralOneFile general = new GeneralOneFile();
+			general.run(T);
+		}
+		
 
 		return allInfo;
 
@@ -167,14 +188,14 @@ public class SBATCHinfo {
 		boolean allInfo = true;
 		projectNumber= Functions.getValue(T, "-pNr", "b2010035");
 		email = Functions.getValue(T, "-email", "johan.reimegard@scilifelab.se");
-		
-		
-//		if(!T.containsKey("-pNR"))
-//			System.out.println("must contain projectNumber -pNr Default:"+ projectNumber);
-//		if(!T.containsKey("-email"))
-//			System.out.println("must contain -email  Default:"+ email);
-		
-		
+
+
+		//		if(!T.containsKey("-pNR"))
+		//			System.out.println("must contain projectNumber -pNr Default:"+ projectNumber);
+		//		if(!T.containsKey("-email"))
+		//			System.out.println("must contain -email  Default:"+ email);
+
+
 		module =null;
 		if(T.containsKey("-modules")){
 			String modules = Functions.getValue(T, "-modules");
@@ -186,7 +207,7 @@ public class SBATCHinfo {
 				module[0]=modules;
 			}
 		}
-		
+
 
 		return allInfo;
 	}
@@ -218,7 +239,7 @@ public class SBATCHinfo {
 			EW.println("#SBATCH --mail-type=All");
 			EW.println("#SBATCH --mail-user="+email);
 		}
-		
+
 		if(module != null){
 			EW.println();
 			EW.println();
@@ -271,11 +292,11 @@ public class SBATCHinfo {
 
 	public void printSBATCHinfoCore(ExtendedWriter EW, String directory,String timestamp, int ID, String program, String time){
 
-		
+
 		if(!IOTools.isDir(directory+"/reports")){
 			IOTools.mkDir(directory+"/reports");
 		}
-		
+
 		String jobName = ID+"_"+program+"_"+timestamp;
 
 		EW.println("#! /bin/bash -l");
@@ -344,7 +365,7 @@ public class SBATCHinfo {
 			IOTools.mkDir(directory+"/reports");
 		}
 
-		
+
 		int nrofnodes = MB/32 + 1;
 		if(nrofnodes < 4){nrofnodes = 4; System.out.println("Memory allocated will be "+4*32+" GB");}
 		else if(nrofnodes < 8){nrofnodes = 8; System.out.println("Memory allocated will be "+8*32+" GB");}

@@ -147,22 +147,35 @@ public class deNovoAssembly {
 		try{
 			if(!IOTools.isDir(projectDir+"/scripts"))
 				IOTools.mkDir(projectDir+"/scripts");
+			ExtendedWriter EW = null;
 			if(this.pairedEnd){
-				ExtendedWriter EW = new ExtendedWriter(new FileWriter(projectDir+"/scripts/"+timeStamp+"_PE_deNovo.sh"));
+				if(!interactive)
+					EW = new ExtendedWriter(new FileWriter(projectDir+"/scripts/"+timeStamp+"_PE_deNovo.sh"));
+				else
+					EW = new ExtendedWriter(new FileWriter(projectDir+"/scripts/PE_deNovo.sh"));
+					
 				deNovoDirPE(EW,sbatch, timeStamp, inDir, trinityDir, oasesDir);
 				EW.flush();
 				EW.close();
 				System.out.println("Execute the following command to start all the runs:");
-				System.out.println("sh "+projectDir+"/scripts/"+timeStamp+"_PE_deNovo.sh > "+projectDir+"/scripts/"+timeStamp+"_PE_deNovo.sh.out 2>"+projectDir+"/scripts/"+timeStamp+"_PE_deNovo.sh.err");
-
+				if(!interactive)
+					System.out.println("sh "+projectDir+"/scripts/"+timeStamp+"_PE_deNovo.sh > "+projectDir+"/scripts/"+timeStamp+"_PE_deNovo.sh.out 2>"+projectDir+"/scripts/"+timeStamp+"_PE_deNovo.sh.err");
+				else
+					System.out.println("sh "+projectDir+"/scripts/PE_deNovo.sh > "+projectDir+"/scripts/PE_deNovo.sh.out 2>"+projectDir+"/scripts/PE_deNovo.sh.err");
 
 			}else{
-				ExtendedWriter EW = new ExtendedWriter(new FileWriter(projectDir+"/scripts/"+timeStamp+"_SR_deNovo.sh"));
+				if(!interactive)
+					EW = new ExtendedWriter(new FileWriter(projectDir+"/scripts/"+timeStamp+"_SR_deNovo.sh"));
+				else
+					EW = new ExtendedWriter(new FileWriter(projectDir+"/scripts/SR_deNovo.sh"));
 				deNovoDirSR(EW,sbatch, timeStamp, inDir, trinityDir, oasesDir);
 				EW.flush();
 				EW.close();
 				System.out.println("Execute the following command to start all the runs:");
-				System.out.println("sh "+projectDir+"/scripts/"+timeStamp+"_SR_deNovo.sh >"+projectDir+"/scripts/"+timeStamp+"_SR_deNovo.sh.out 2>"+projectDir+"/scripts/"+timeStamp+"_SR_deNovo.sh.error");
+				if(!interactive)
+					System.out.println("sh "+projectDir+"/scripts/"+timeStamp+"_SR_deNovo.sh >"+projectDir+"/scripts/"+timeStamp+"_SR_deNovo.sh.out 2>"+projectDir+"/scripts/"+timeStamp+"_SR_deNovo.sh.error");
+				if(interactive)
+					System.out.println("sh "+projectDir+"/scripts/SR_deNovo.sh >"+projectDir+"/scripts/SR_deNovo.sh.out 2>"+projectDir+"/scripts/SR_deNovo.sh.error");
 			}
 
 		}catch(Exception E){E.printStackTrace();}
@@ -178,9 +191,11 @@ public class deNovoAssembly {
 		ArrayList <String> fileNames = IOTools.getSequenceFiles(inDir,suffix);
 		ArrayList <String[]> pairs = IOTools.findPairs(fileNames,sep);
 		if(!pairs.isEmpty() && (oases || trinity)){
-			System.out.println("creating de novo files for paired reads in "+inDir);
+			System.out.println("creating de novo shell scripts for paired reads in "+inDir);
 			int count = 0;
-			int nrOfSequences = FastQSequences.countSequencesPE(inDir,pairs);
+			int nrOfSequences = 0;
+			if(!interactive)
+				nrOfSequences= FastQSequences.countSequencesPE(inDir,pairs);
 			if(trinity){
 				try{
 					if(!IOTools.isDir(trinityDir))
@@ -191,16 +206,27 @@ public class deNovoAssembly {
 						IOTools.mkDir(trinityDir+"/scripts");
 
 					//trinitySpecific
-					String 	sbatchFileName = trinityDir+"/scripts/"+timestamp+"_"+count+"_trinity.sbatch";
-					if(!interactive )
+					String 	sbatchFileName =null;
+					if(!interactive ){
+						sbatchFileName = trinityDir+"/scripts/"+timestamp+"_"+count+"_trinity.sbatch";
 						generalSbatchScript.println("sbatch "+ sbatchFileName);
-					else
+					}
+					else{
+						sbatchFileName = trinityDir+"/scripts/"+count+"_trinity.sh";
 						generalSbatchScript.println("sh "+ sbatchFileName);
+					}
+					
 					ExtendedWriter EW = new ExtendedWriter(new FileWriter(sbatchFileName));
-					String time = Trinity.getTime(nrOfSequences);
-					String memory = Trinity.trinityFileStart(nrOfSequences,  inDir,  trinityDir,  timestamp,  count,  sbatch, EW,time);
 					int CPUs = 8;
-					if(memory.compareTo("2G") == 0) CPUs = 2;
+					String memory = "20G";
+					if(interactive){	
+						EW.println("cd "+inDir);
+					}else{
+						String time = Trinity.getTime(nrOfSequences);
+						memory = Trinity.trinityFileStart(nrOfSequences,  inDir,  trinityDir,  timestamp,  count,  sbatch, EW,time);
+						if(memory.compareTo("2G") == 0) CPUs = 2;
+					}
+					
 					Trinity run = new Trinity();
 					run.suffix = this.suffix;
 
@@ -219,15 +245,27 @@ public class deNovoAssembly {
 					if(!IOTools.isDir(oasesDir+"/scripts"))
 						IOTools.mkDir(oasesDir+"/scripts");
 
-					String 	sbatchFileName = oasesDir+"/scripts/"+timestamp+"_"+count+"_oases.sbatch";
-					if(!interactive )
+					String 	sbatchFileName = null;
+
+					
+					if(!interactive){
+						sbatchFileName = oasesDir+"/scripts/"+timestamp+"_"+count+"_oases.sbatch";
 						generalSbatchScript.println("sbatch "+ sbatchFileName);
-					else
+					}
+					else{
+						sbatchFileName = oasesDir+"/scripts/"+count+"_oases.sbatch";
 						generalSbatchScript.println("sh "+ sbatchFileName);
+					}
+
 					ExtendedWriter EW = new ExtendedWriter(new FileWriter(sbatchFileName));
-					String time = Oases.getTime(nrOfSequences);
-					String memory = Oases.FileStart(nrOfSequences,  inDir,  trinityDir,  timestamp,  count,  sbatch, EW,time);
 					int CPUs = 8;
+					String memory = "20G";
+					if(interactive){
+						EW.println("cd "+inDir);
+					}else{
+						String time = Oases.getTime(nrOfSequences);
+						memory = Oases.FileStart(nrOfSequences,  inDir,  trinityDir,  timestamp,  count,  sbatch, EW,time);
+					}
 					Oases run = new Oases();
 					run.setValues(maxKmer, minKmer, step, finalKmer, suffix, insertSize, projectDir, strandSpecific);
 
@@ -251,13 +289,13 @@ public class deNovoAssembly {
 
 
 	public void deNovoDirSR(ExtendedWriter generalSbatchScript, SBATCHinfo sbatch ,String timestamp,String inDir, String trinityDir, String oasesDir ){
-		System.out.println("creating de novo files for single reads in "+inDir);
+		System.out.println("creating de novo shell scripts for single reads in "+inDir);
 
 		ArrayList <String> fileNames = IOTools.getSequenceFiles(inDir,suffix);
 		if(!fileNames.isEmpty() && (oases || trinity)){
 			int count = 0;
 			int nrOfSequences = FastQSequences.countSequencesSR(inDir,fileNames);
-			System.out.println("creating de novo files for single reads in "+inDir);
+			System.out.println("creating de novo shell scripts for single reads in "+inDir);
 			if(trinity){
 				try{
 					if(!IOTools.isDir(trinityDir))

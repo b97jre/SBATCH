@@ -1,6 +1,7 @@
 package SBATCHscripts;
 
 import general.ExtendedWriter;
+import general.ExtendedReader;
 import general.Functions;
 import general.IOTools;
 
@@ -30,6 +31,9 @@ public class STAR {
 	int seedLength; 
 	int nrOfHits;
 	int percentage;
+	
+	String parameterFile;
+	
 
 
 	boolean strandSpecifik;
@@ -87,15 +91,13 @@ public class STAR {
 			allPresent = false;
 		}
 
-
 		outDir= Functions.getValue(T, "-o", inDir+"_STAR");
-
 		projectDir= Functions.getValue(T, "-pDir", IOTools.getCurrentPath());
 
+		
 		if(T.containsKey("-refDir")){
 			referenceDir= Functions.getValue(T, "-refDir", "."); 
 			if(referenceDir.lastIndexOf('/')==referenceDir.length()-1){
-
 				referenceDir = referenceDir.substring(0,referenceDir.length()-1);
 			}
 		}
@@ -103,8 +105,6 @@ public class STAR {
 			System.out.println("must contain referenceDirectory -refDir");
 			allPresent = false;
 		}
-
-
 		if(T.containsKey("-time"))
 			time = Functions.getValue(T, "-time", ".");
 		else if(T.containsKey("-interactive")){
@@ -117,14 +117,24 @@ public class STAR {
 		suffix = Functions.getValue(T,"-suffix","fastq");
 		String seperator = Functions.getValue(T,"-sep","1."+suffix+" 2."+suffix);
 		this.sep = seperator.split(" ");
-		this.sam2bam = true;
 		
+		if(T.containsKey("-refDir")){
+			referenceDir= Functions.getValue(T, "-refDir", "."); 
+			if(referenceDir.lastIndexOf('/')==referenceDir.length()-1){
+				referenceDir = referenceDir.substring(0,referenceDir.length()-1);
+			}
+		}
+		
+		
+		this.sam2bam = true;
 
 		if(T.containsKey("-strandSpecific"))
 			this.strandSpecifik=true;
 		else
 			this.strandSpecifik=false;
 
+		
+	//	if(T.containsKey(key))	
 
 
 		//		if(T.containsKey("-searchspace"))
@@ -192,6 +202,8 @@ public class STAR {
 				IOTools.mkDir(projectDir+"/scripts");
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(projectDir+"/scripts/"+timeStamp+".STAR.sh"));
 			if(interactive)
+				EW = new ExtendedWriter(new FileWriter(projectDir+"/scripts/STAR.sh"));
+			if(interactive)
 				STAR.STARCommandLoadGenome(EW, referenceDir);
 			if(files){
 				STARFile(EW,sbatch, timeStamp,  outDir,forward, reverse);
@@ -204,9 +216,12 @@ public class STAR {
 
 			EW.flush();
 			EW.close();
-			
+
 			System.out.println("Execute the following command to start all the runs:");
-			System.out.println("sh "+projectDir+"/scripts/"+timeStamp+".STAR.sh >&"+projectDir+"/scripts/"+timeStamp+".STAR.sh.out ");
+			if(interactive)
+				System.out.println("sh "+projectDir+"/scripts/STAR.sh >"+projectDir+"/scripts/STAR.sh.out ");
+			else
+				System.out.println("sh "+projectDir+"/scripts/"+timeStamp+".STAR.sh >&"+projectDir+"/scripts/"+timeStamp+".STAR.sh.out ");
 		}catch(Exception E){E.printStackTrace();}
 	} 
 
@@ -236,7 +251,7 @@ public class STAR {
 					}
 				}
 				else{
-					System.out.println("Something wrong with the seperators? Asuming that these are single end reads");
+					//System.out.println("Something wrong with the seperators? Asuming that these are single end reads");
 					//System.out.println(sep[0]);
 					//System.out.println(sep[1]);
 					for(int i = 0; i < fileNames.size(); i++){
@@ -280,21 +295,26 @@ public class STAR {
 			String 	sbatchFileName = outDir+"/scripts/"+timestamp+"_STAR.sbatch";
 			if(!interactive)
 				generalSbatchScript.println("sbatch "+ sbatchFileName);
-			else
+			else{
+				sbatchFileName = outDir+"/scripts/STAR.sh";
 				generalSbatchScript.println("sh "+ sbatchFileName);
+			}
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(sbatchFileName));
-			sbatch.printSBATCHinfo(EW,outDir,timestamp,0,"STAR", time);
+			if(!interactive){
+				sbatch.printSBATCHinfo(EW,outDir,timestamp,0,"STAR", time);
+			}
 
 			EW.println();
 			EW.println("cd "+ outDir);
 			if(reverse != null)
-				STARCommand(EW, referenceDir, projectDir+"/"+forward, projectDir+"/"+reverse,8,this.strandSpecifik,this.suffix);
+				STARCommandRNA(EW, referenceDir, projectDir+"/"+forward, projectDir+"/"+reverse,8,this.strandSpecifik,this.suffix);
 			else
-				STARCommand(EW, referenceDir, projectDir+"/"+forward, null,8,this.strandSpecifik,this.suffix);
+				STARCommandRNA(EW, referenceDir, projectDir+"/"+forward, null,8,this.strandSpecifik,this.suffix);
+		
 			if(sam2bam){
 				SamtoolsSBATCH.sam2bam(EW, outDir+"/Aligned.out.sam", -1, -1, true, true, true, true, true);
 			}
-			
+
 			EW.println();
 			EW.println();
 			EW.println("wait");
@@ -304,71 +324,129 @@ public class STAR {
 
 		}catch(Exception E){E.printStackTrace();}
 	}
-	
-	
-	public static void STARCommand( ExtendedWriter EW ,String refDir, String inFile1, String inFile2, int nrOfThreads, boolean strandSpecifik, String suffix){
 
-		
-		String bowtiecommand = "STAR ";
-		bowtiecommand += " --genomeDir "+ refDir;
-		bowtiecommand += " --readFilesIn "+ inFile1;
+
+	public static void STARCommandRNA( ExtendedWriter EW ,String refDir, String inFile1, String inFile2, int nrOfThreads, boolean strandSpecifik, String suffix){
+
+
+		String STARcommand = "STAR ";
+		STARcommand += " --genomeDir "+ refDir;
+		STARcommand += " --readFilesIn "+ inFile1;
 		if(inFile2 != null){
-			bowtiecommand += " "+ inFile2;
+			STARcommand += " "+ inFile2;
 		}
-		bowtiecommand += " --runThreadN "+ nrOfThreads;
-		bowtiecommand += " --genomeLoad LoadAndKeep";
+		STARcommand += " --runThreadN "+ nrOfThreads;
+		STARcommand += " --genomeLoad LoadAndKeep";
 
-		if(!strandSpecifik) bowtiecommand += " --outSAMstrandField intronMotif ";
-		if(suffix.indexOf("gz")>0) bowtiecommand += " --readFilesCommand zcat ";
-		if(suffix.indexOf("bz2")>0) bowtiecommand += " --readFilesCommand bzcat ";
-		
+		if(!strandSpecifik) STARcommand += " --outSAMstrandField intronMotif ";
+		if(suffix.indexOf("gz")>0) STARcommand += " --readFilesCommand zcat ";
+		if(suffix.indexOf("bz2")>0) STARcommand += " --readFilesCommand bzcat ";
+
 
 
 		EW.println("echo START");
 		EW.println();
-		EW.println("echo \""+bowtiecommand+"\" 1>&2");
-		EW.println(bowtiecommand);
+		EW.println("echo \""+STARcommand+"\" 1>&2");
+		EW.println(STARcommand);
 		EW.println();
 		EW.println("echo DONE");
 
 	}
+	
+	public static void STARCommandParameterFile(ExtendedWriter EW ,String refDir, String inFile1, String inFile2, String suffix, int nrOfThreads,  String parameterFile){
+
+
+		String STARcommand = "STAR ";
+		STARcommand += " --genomeDir "+ refDir;
+		STARcommand += " --readFilesIn "+ inFile1;
+		if(inFile2 != null){
+			STARcommand += " "+ inFile2;
+		}
+		STARcommand += " --runThreadN "+ nrOfThreads;
+		//if(!strandSpecifik) STARcommand += " --outSAMstrandField intronMotif ";
+		if(suffix.indexOf("gz")>0) STARcommand += " --readFilesCommand zcat ";
+		if(suffix.indexOf("bz2")>0) STARcommand += " --readFilesCommand bzcat ";
+		
+		try{
+			ExtendedReader ER = new ExtendedReader(new FileReader(parameterFile));
+			while(ER.more()){
+				if(ER.lookAhead() != '#'){
+					String line = ER.readLine();
+					String[] command = line.split("\t");
+					if(command.length != 2){
+						System.out.println("Somehting wrong with line ");
+						System.out.println(line);
+						System.out.println("Ignoring the command given in this line");
+					}else{
+						STARcommand += " --"+command[0]+" "+command[1];
+					}
+				}
+			}
+			ER.close();
+		}catch(Exception E){
+			E.printStackTrace();
+		}
+		
+		EW.println("echo START");
+		EW.println("echo using parameters from file "+parameterFile);
+		EW.println();
+		EW.println("echo \""+STARcommand+"\" 1>&2");
+		EW.println(STARcommand);
+		EW.println();
+		EW.println("echo DONE");
+
+	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	public static void STARCommandLoadGenome( ExtendedWriter EW ,String refDir){
 
-		
-		String bowtiecommand = "STAR ";
-		bowtiecommand += " --genomeDir "+ refDir;
-		bowtiecommand += " --genomeLoad LoadAndExit";
+
+		String STARcommand = "STAR ";
+		STARcommand += " --genomeDir "+ refDir;
+		STARcommand += " --genomeLoad LoadAndExit";
 
 
 
 		EW.println("echo START");
 		EW.println();
-		EW.println("echo \""+bowtiecommand+"\" 1>&2");
-		EW.println(bowtiecommand);
+		EW.println("echo \""+STARcommand+"\" 1>&2");
+		EW.println(STARcommand);
 		EW.println();
 		EW.println("echo DONE");
 
 	}
-	
+
 	public static void STARCommandRemoveGenome( ExtendedWriter EW ,String refDir){
 
-		
-		String bowtiecommand = "STAR ";
-		bowtiecommand += " --genomeDir "+ refDir;
-		bowtiecommand += " --genomeLoad remove";
+
+		String STARcommand = "STAR ";
+		STARcommand += " --genomeDir "+ refDir;
+		STARcommand += " --genomeLoad remove";
 
 
 
 		EW.println("echo START");
 		EW.println();
-		EW.println("echo \""+bowtiecommand+"\" 1>&2");
-		EW.println(bowtiecommand);
+		EW.println("echo \""+STARcommand+"\" 1>&2");
+		EW.println(STARcommand);
 		EW.println();
 		EW.println("echo DONE");
 
 	}
 
-	
+
 
 }
 

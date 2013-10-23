@@ -166,7 +166,7 @@ public class GATK {
 			System.out.println("HTStools -p sbatch -GATK -phase1  -i INDIR -R REFERENCEFILE -time 4:00:00 -knownSNPs knownSNPsFile  [-knownIndels knownIndelsFile] [-targetIntervals bedFile] -suffix bam [ -preGATK -RGPU Barcode] [-RGSM Name]] ");
 			System.out.println("HTStools -p sbatch -GATK -phase2 -i INDIR -R REFERENCEFILE -time 4:00:00 -L 100000 [-rerun] -X 2 -suffix reduced.bam");
 			System.out.println("HTStools -p sbatch -GATK -merge -i INDIR -R REFERENCEFILE -time 6-00:00:00 -X 23 -suffix vcf -prefix output.raw.snps.indels");
-			System.out.println("HTStools -p sbatch -GATK --phaseSNPs -i INDIR -R REFERENCEFILE -time 6-00:00:00 -X 23 -knownSNPs knownSNPsFile -suffix real.BQSR.bam ");
+			System.out.println("HTStools -p sbatch -GATK -phaseSNPs -i INDIR -R REFERENCEFILE -time 6-00:00:00 -X 23 -knownSNPs knownSNPsFile -suffix ENDOFBAMfiles -respectPhase ");
 		}
 	}
 
@@ -769,13 +769,14 @@ public class GATK {
 	    sample.bam <- recal.bam			
 		 */
 
+		boolean respectAlreadyPhased = false;
+		if(T.containsKey("-respectPhaseInInput"))
+			respectAlreadyPhased=true;
 		if(!IOTools.isDir(outDir+"/reports"))
 			IOTools.mkDir(outDir+"/reports");
 		if(!IOTools.isDir(outDir+"/scripts"))
 			IOTools.mkDir(outDir+"/scripts");
 		try{
-
-
 			for (int i = 0; i < fileNames.size();i++){ 
 				String bamFile = fileNames.get(i);
 					
@@ -786,7 +787,7 @@ public class GATK {
 				EW.println();
 				EW.println("cd "+ outDir);
 				
-				String commandLine = ReadBackedPhasing(this.memory, this.GATKdir, bamFile, this.Reference, bamFile+".phased.vcf", this.knownSNPVCF,10.0);
+				String commandLine = ReadBackedPhasing(this.memory, this.GATKdir, bamFile, this.Reference, bamFile+".phased.vcf", this.knownSNPVCF,10.0,respectAlreadyPhased);
 				EW.println(commandLine);
 				System.out.println(commandLine);
 
@@ -1207,9 +1208,12 @@ public class GATK {
 	}
 
 
-	public static String ReadBackedPhasing(int memory, String GATKDir, String bamFile, String reference, String outFileVCF, String knownSNPVCF,double phaseQualityThresh){
-
-		/*     java
+	public static String ReadBackedPhasing(int memory, String GATKDir, String bamFile, String reference, 
+			String outFileVCF, String knownSNPVCF,double phaseQualityThresh, boolean respectAlreadyPhased){
+		
+		/*
+		how to write the call is taken from http://www.broadinstitute.org/gatk/gatkdocs/org_broadinstitute_sting_gatk_walkers_phasing_ReadBackedPhasing.html#--respectPhaseInInput
+      
       -jar GenomeAnalysisTK.jar
       -T ReadBackedPhasing
       -R reference.fasta
@@ -1220,10 +1224,6 @@ public class GATK {
       --phaseQualityThresh 20.0
  
 		 */		
-
-
-
-		
 		
 
 		String commandLine = "java -Xmx"+memory+"g -jar "+GATKDir+"/GenomeAnalysisTK.jar "+
@@ -1234,6 +1234,10 @@ public class GATK {
 				"-o "+outFileVCF+
 				" --phaseQualityThresh "+  phaseQualityThresh;
 				commandLine+=" -I "+bamFile;
+				if(respectAlreadyPhased)
+					commandLine+=" -respectPhaseInInput ";
+					
+				
 
 		return commandLine;
 

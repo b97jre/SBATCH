@@ -70,5 +70,31 @@ public class Blat {
 		count++;
 
 	}
+
+	public void blatCommand( ExtendedWriter EW, SBATCHinfo sbatch ,String timestamp,String inFile, String referenceFile, String outDir ){
+
+			EW.println("module load bioinfo-tools");
+			EW.println("module load blat/34");
+
+
+			String refName = referenceFile;
+			String [] temp =  referenceFile.split("/");
+			if(temp.length > 1)
+				refName = temp[temp.length-1];
+
+			temp =  inFile.split("/");
+			String inName = inFile;
+			if(temp.length > 1)
+				inName = temp[temp.length-1];
+
+			EW.println("blat -out=blast8 -minScore=100 "+referenceFile+" "+inFile+" "+outDir+"/"+refName+"_"+inName+".blat");
+
+			EW.flush();
+			EW.close();
+
+
+	}
+
+
 }
 

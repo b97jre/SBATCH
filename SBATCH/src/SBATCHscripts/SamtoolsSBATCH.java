@@ -24,6 +24,7 @@ public class SamtoolsSBATCH {
 	boolean view;
 	boolean index;
 	boolean flagstat;
+	boolean idxstat;
 
 	public SamtoolsSBATCH(){
 		inDir = projectDir= suffix = time = null;
@@ -77,8 +78,9 @@ public class SamtoolsSBATCH {
 		if(T.containsKey("-h")) this.header = true;
 		if(T.containsKey("-sort")) this.sort = true;
 		if(T.containsKey("-flagstat")) this.flagstat = true;
+		if(T.containsKey("-idxstat")) this.idxstat = true;
 		if(T.containsKey("-index")) this.index = true;
-		if(T.containsKey("-All")) {sort = header = view = index = flagstat = true;}
+		if(T.containsKey("-All")) {sort = header = view = index = flagstat = idxstat = true;}
 
 		if(T.containsKey("-merge")) this.merge = true;
 
@@ -195,7 +197,7 @@ public class SamtoolsSBATCH {
 			EW.println();
 
 			String nameBase = fileName.substring(0,fileName.indexOf(suffix));
-			if(suffix.indexOf("sam")>0)
+			if(suffix.indexOf("sam")>-1)
 				sam2bam(EW,fileName,f, F, sort, header,view,flagstat,index );
 			else
 				bam2bam(EW,fileName,f, F, sort, header,view,flagstat,index);
@@ -279,8 +281,10 @@ public class SamtoolsSBATCH {
 		if(index){
 			EW.println("samtools index "+nameBase+".bam");
 		}
-		if(flagstat)
+		if(flagstat){
 			EW.println("samtools flagstat "+nameBase+".bam >"+nameBase+".bam.flagstat");
+			EW.println("samtools idxstat "+nameBase+".bam >"+nameBase+".idxstat");
+		}
 	}
 
 

@@ -215,12 +215,12 @@ public class Oases {
 		String memory = "24G";
 		if(nrofMB < 3){
 			System.out.println("Memory allocated will be 3 GB");
-			sbatch.printSBATCHinfoCore(EW,outDir,timestamp,count,"trinity_"+split1[split1.length-1], newTime);
+			sbatch.printSBATCHinfoCore(EW,outDir,timestamp,count,"oases_"+split1[split1.length-1], newTime);
 			memory = "2G";
 		}
 		else if(nrofMB < 24){
 			System.out.println("Memory allocated will be 24 GB");
-			sbatch.printSBATCHinfo(EW,outDir,timestamp,count,"trinity_"+split1[split1.length-1], newTime);
+			sbatch.printSBATCHinfo(EW,outDir,timestamp,count,"oases_"+split1[split1.length-1], newTime);
 			memory = "23G";
 		}
 		else if(nrofMB < 36){
