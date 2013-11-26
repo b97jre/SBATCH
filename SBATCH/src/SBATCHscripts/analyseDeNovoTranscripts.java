@@ -149,8 +149,8 @@ public class analyseDeNovoTranscripts {
 				generalSbatchScript.println("sbatch " + sbatchFileName);
 
 				EW = new ExtendedWriter(new FileWriter(sbatchFileName));
-				sbatch.printSBATCHinfo(EW, inDir, timestamp, 0, fileName
-						+ "_findORF", time);
+				sbatch.printSBATCHinfo(EW, inDir, timestamp, fileName
+						+ "_findORF", "analyseDeNovoTranscripts");
 			} else {
 				String sbatchFileName = inDir + "/scripts/" + timestamp + "_"
 						+ fileName + "_findORF.sh";

@@ -118,8 +118,8 @@ public class FastQCSBATCH {
 				try {
 					ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 							sbatchFileName));
-					sbatch.printSBATCHinfoCore(EW, finalOutDir, timestamp,
-							count, "FastQC", time);
+					sbatch.printSBATCHinfo(EW, finalOutDir, timestamp,
+							count, "FastQC");
 
 					EW.println();
 					EW.println("module load bioinfo-tools");
@@ -140,7 +140,7 @@ public class FastQCSBATCH {
 
 	}
 
-	public void FastQCSample(ExtendedWriter EW, String inDir, String fileName) {
+	public void FastQCSample(ExtendedWriter EW, String inDir, String fileName){
 		EW.println();
 		EW.println("#####################################################################");
 		EW.println("#FastQC of sample " + inDir + "/" + fileName);
@@ -152,6 +152,9 @@ public class FastQCSBATCH {
 			dependencies = true;
 		}
 		EW.println("cd " + inDir);
+		if(!IOTools.isDir(inDir+"/"+"fastQC"))
+				IOTools.mkDirs(inDir+"/"+"fastQC");
+		
 		EW.println("fastqc -o fastQC " + fileName);
 		EW.println();
 		EW.println("#FastQC stop");
@@ -159,4 +162,24 @@ public class FastQCSBATCH {
 		EW.println();
 	}
 
+	public void FastQCSample(ExtendedWriter EW, String inDir, String fileName, String fileNameWithoutSuffix) {
+		EW.println();
+		EW.println("#####################################################################");
+		EW.println("#FastQC of sample " + inDir + "/" + fileName);
+		EW.println();
+		if (!dependencies) {
+			EW.println("module load bioinfo-tools");
+			EW.println("module load FastQC");
+			EW.println();
+			dependencies = true;
+		}
+		EW.println("cd " + inDir);
+		EW.println("fastqc -o fastQC_"+fileNameWithoutSuffix+" "+fileName);
+		EW.println();
+		EW.println("#FastQC stop");
+		EW.println("#####################################################################");
+		EW.println();
+	}
+	
+	
 }

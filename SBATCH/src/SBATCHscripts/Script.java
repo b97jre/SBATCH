@@ -107,11 +107,7 @@ public class Script {
 		} else {
 			info1 = inFile;
 		}
-		if (!core)
-			sbatch.printSBATCHinfo(EW, projectDir, timestamp, 0, info1, time);
-		else
-			sbatch.printSBATCHinfoCore(EW, projectDir, timestamp, 0, info1,
-					time);
+			sbatch.printSBATCHinfo(EW, projectDir, timestamp, info1, "script");
 
 		EW.println("cd " + this.projectDir);
 		EW.println();

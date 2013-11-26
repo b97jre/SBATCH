@@ -81,7 +81,7 @@ public class Merge {
 			generalStart(T, sbatch, timeStamp);
 		else
 			System.out
-					.println("\n\nAborting run because of missing arguments for cufflinks.");
+					.println("\n\nAborting run because of missing arguments.");
 	}
 
 	public void generalStart(Hashtable<String, String> T, SBATCHinfo sbatch,

@@ -140,8 +140,8 @@ public class TopHatSBATCH {
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 					sbatchFileName));
 			String[] split1 = outDir.split("/");
-			sbatch.printSBATCHinfoCore(EW, outDir, timestamp, count, "tophat_"
-					+ split1[split1.length - 1] + "_" + count, time);
+			sbatch.printSBATCHinfo(EW, outDir, timestamp, count, "tophat_"
+					+ split1[split1.length - 1] + "_" + count);
 
 			if (!IOTools.isDir(outDir + "/pair_" + count))
 				IOTools.mkDir(outDir);

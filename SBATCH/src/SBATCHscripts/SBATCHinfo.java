@@ -1,5 +1,6 @@
 package SBATCHscripts;
 
+import java.io.FileWriter;
 import java.util.EnumSet;
 import java.util.Hashtable;
 
@@ -17,23 +18,23 @@ public class SBATCHinfo {
 	private boolean core;
 	private int memory;
 	public String timeStamp;
-	
-	public boolean interactive; 
-	
 
-	public int getNrOfCores(){
-		if(core) return 1;
-		else return node;
-	}
-	
-	
+	public boolean interactive; 
+	boolean milou;
+
+
+
+
+
 	public static void main(String[] args) {
 		int length = args.length;
 
+		System.out.println("Current flags:");
 		for (int i = 0; i < length; i++) {
 			args[i] = args[i].trim();
 			System.out.print(args[i] + " ");
 		}
+		System.out.println();
 		System.out.println();
 
 		Hashtable<String, String> T = Functions.parseCommandLine(args);
@@ -74,6 +75,7 @@ public class SBATCHinfo {
 		BLAT,
 		PANTHER,
 		PFAM,
+		TRIMFASTQFILES,
 		HELP
 	}
 
@@ -82,28 +84,32 @@ public class SBATCHinfo {
 
 
 	public SBATCHinfo() {
+		
 	}
 
 
-	
-	
+
+
 	public boolean run(Hashtable<String, String> T) {
 
 		if (!T.containsKey("-interactive")) {
 			if (!T.containsKey("-pNr") || !T.containsKey("-email") || !T.containsKey("-time")) {
-				System.out.println("must contain project number (-pNr), email(-email) and likely time (-time) or be interactive (-interactive)");
-			help();
-			return false;
+				help();
+				return false;
 			}
 		}
-		
-		
+
+
 		if(T.containsKey("-node")){
 			core =false;
 			node = Functions.getInt(T, "-node", 8);
 			memory = Functions.getInt(T,"-memory", 24);
 		}else 
 			core =true;
+		memory = Functions.getInt(T,"-memory", 24);
+	
+		
+		milou = true;
 		projectNumber = Functions.getValue(T, "-pNr", "b2010035");
 		email = Functions.getValue(T, "-email", "johan.reimegard@scilifelab.se");
 		time = Functions.getValue(T, "-time");
@@ -114,7 +120,6 @@ public class SBATCHinfo {
 
 		if (T.containsKey("-modules")) {
 			String modules = Functions.getValue(T, "-modules");
-			System.out.println("modules found");
 			if (modules.indexOf(" ") > -1)
 				module = modules.split(" ");
 			else {
@@ -137,7 +142,14 @@ public class SBATCHinfo {
 			break;
 		case GATK:
 			GATK gatk = new GATK();
-			gatk.run(T);
+			if(gatk.addParameters(T)){
+				if(gatk.phase1){
+					GeneralDir general = new GeneralDir();
+					if(general.addParameters(T,this))
+						general.generalStart(T, this);
+				}
+			}
+			
 			break;
 		case BWA:
 			BWA bwa = new BWA();
@@ -168,8 +180,16 @@ public class SBATCHinfo {
 			gunzip.run(T);
 			break;
 		case CUTADAPT:
-			WriteTocutAdaptoSBATCH cutadapt = new WriteTocutAdaptoSBATCH();
-			cutadapt.run(T);
+			if(T.containsKey("-sep")){
+				GeneralPairFile CutAdapt = new GeneralPairFile();
+				CutAdapt.run(T,this);
+			}else if(T.containsKey("-f2")){
+				GeneralPairFile CutAdapt = new GeneralPairFile();
+				CutAdapt.run(T,this);
+			}else{
+				GeneralOneFile CutAdapt = new GeneralOneFile();
+				CutAdapt.run(T,this);
+			}
 			break;
 		case SHRIMP:
 			ShrimpSBATCH shrimp = new ShrimpSBATCH();
@@ -184,12 +204,20 @@ public class SBATCHinfo {
 			cufflinks.run(T,this);
 			break;
 		case SAMTOOLS:
-			SamtoolsSBATCH samtools = new SamtoolsSBATCH();
-			samtools.run(T);
+			GeneralOneFile samtools = new GeneralOneFile();
+			samtools.run(T,this);
 			break;
 		case BOWTIE2:
-			bowtie2SBATCH bowtie2 = new bowtie2SBATCH();
-			bowtie2.run(T);
+			if(T.containsKey("-sep")){
+				GeneralPairFile bowtie2 = new GeneralPairFile();
+				bowtie2.run(T,this);
+			}else if(T.containsKey("-f2")){
+				GeneralPairFile bowtie2 = new GeneralPairFile();
+				bowtie2.run(T,this);
+			}else{
+				GeneralOneFile bowtie2 = new GeneralOneFile();
+				bowtie2.run(T,this);
+			}
 			break;
 		case SEQPREP:
 			SeqPrep seqprep = new SeqPrep();
@@ -227,148 +255,52 @@ public class SBATCHinfo {
 			GeneralOneFile pfam = new GeneralOneFile();
 			pfam.run(T,this);
 			break;
+		case TRIMFASTQFILES:
+			if(T.containsKey("-sep")){
+				GeneralPairFile trimFastqFiles = new GeneralPairFile();
+				trimFastqFiles.run(T,this);
+			}else if(T.containsKey("-f2")){
+				GeneralPairFile trimFastqFiles = new GeneralPairFile();
+				trimFastqFiles.run(T,this);
+			}else{
+				GeneralOneFile trimFastqFiles = new GeneralOneFile();
+				trimFastqFiles.run(T,this);
+			}
+			break;
 		default: help();	
 
 		}			
 		return true;
 
 	}
-	
-	
+
+
 	public void help(){
+
+		System.out.println("Mandatory flags for SBATCHinfo:");
+		System.out.println(Functions.fixedLength("-pNr <projrctNumber>", 30)+"The project which you want the time to be taken from (-pNr b2011098)");
+		System.out.println(Functions.fixedLength("-email <your@email>", 30)+"Your email (-email john.doe@scilifelab.se)");
+		System.out.println(Functions.fixedLength("-time <time>", 30)+"The time you will (-time 1-2:00:00)");
+		System.out.println(Functions.fixedLength("-program <program>",30)+"Available programs are listed below.(-program blast)");
+		System.out.println("");
+		System.out.println("Other flags for SBATCHinfo:");
+		System.out.println(Functions.fixedLength("-core", 30)+" This is default, i.e. one core 3 GB RAM. (-core)");
+		System.out.println(Functions.fixedLength("-node <numberOfCores>", 30)+" Number of cores. Default is 8, i.e one node. (-node 8)");
+		System.out.println(Functions.fixedLength("-memory <NrOfGB>", 30)+" Memory of nodes. Default is 3, i.e a core. (-memory 24)");
+		System.out.println(Functions.fixedLength("-milou", 30)+" If you want to run on the milou cluster. (-memory 24)");
+		System.out.println("");
 		
-		System.out.println("To start any program you have to specify the -program <program> flag. Available programs are listed below.");
-		
-		
-		System.out.println("To start any program you have to specify the -program <program> flag. Available programs are listed below.");
+
 		for (Programs info : EnumSet.allOf(Programs.class)) {
 			System.out.println(info);
 		}
-		
-		System.out.println();
-		
-	}
-	
-	
 
-	//
-	//		if (T.containsKey("-STAR")) {
-	//			STAR sbatch = new STAR();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//		if (T.containsKey("-picard")) {
-	//
-	//		}
-	//		if (T.containsKey("-GATK")) {
-	//		}
-	//		if (T.containsKey("-BWA")) {
-	//			BWA sbatch = new BWA();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//		if (T.containsKey("-deNovo")) {
-	//			deNovoAssembly sbatch = new deNovoAssembly();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//		if (T.containsKey("-deNovoAnalysis")) {
-	//			analyseDeNovoTranscripts sbatch = new analyseDeNovoTranscripts();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//
-	//		if (T.containsKey("-extension")) {
-	//			deNovoExtension sbatch = new deNovoExtension();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//
-	//		if (T.containsKey("-fastQC")) {
-	//			FastQCSBATCH sbatch = new FastQCSBATCH();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//		if (T.containsKey("-filter")) {
-	//			FilterFastqSBATCH sbatch = new FilterFastqSBATCH();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//
-	//		if (T.containsKey("-gzip")) {
-	//			gunzipSBATCH sbatch = new gunzipSBATCH();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//
-	//		if (T.containsKey("-cutAdapt")) {
-	//			WriteTocutAdaptoSBATCH sbatch = new WriteTocutAdaptoSBATCH();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//
-	//		if (T.containsKey("-shrimp")) {
-	//			ShrimpSBATCH sbatch = new ShrimpSBATCH();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//
-	//		if (T.containsKey("-tophat")) {
-	//			TopHatSBATCH sbatch = new TopHatSBATCH();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//
-	//		if (T.containsKey("-cufflinks")) {
-	//			CufflinksSBATCH sbatch = new CufflinksSBATCH();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//
-	//		if (T.containsKey("-samtools")) {
-	//			SamtoolsSBATCH sbatch = new SamtoolsSBATCH();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//
-	//		if (T.containsKey("-bowtie2")) {
-	//			bowtie2SBATCH sbatch = new bowtie2SBATCH();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//
-	//		if (T.containsKey("-SeqPrep")) {
-	//			SeqPrep sbatch = new SeqPrep();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//		if (T.containsKey("-trinity")) {
-	//			Trinity sbatch = new Trinity();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//		if (T.containsKey("-DigiNorm")) {
-	//			DigiNorm sbatch = new DigiNorm();
-	//			sbatch.run(T);
-	//			break;
-	//		}
-	//
-	//		if (T.containsKey("-script")) {
-	//			Script script = new Script();
-	//			script.run(T);
-	//			break;
-	//
-	//		}
-	//		if (T.containsKey("-merge")) {
-	//			Merge script = new Merge();
-	//			script.run(T);
-	//			break;
-	//
-	//		} else {
-	//			GeneralOneFile general = new GeneralOneFile();
-	//			general.run(T);
-	//			break;
-	//		}
+		System.out.println();
+
+	}
+
+
+
 
 
 	public boolean addSBATCHinfo(Hashtable<String, String> T) {
@@ -376,23 +308,31 @@ public class SBATCHinfo {
 		if (!T.containsKey("-interactive")) {
 			if (!T.containsKey("-pNr") || !T.containsKey("-email") || !T.containsKey("-time")) {
 				System.out.println("must contain project number (-pNr), email(-email) and likely time (-time) or be interactive (-interactive)");
-			help();
-			return false;
+				help();
+				return false;
 			}
 		}
-		
-		
-		if(T.containsKey("-node")){
-			core =false;
-			node = Functions.getInt(T, "-node", 8);
-			memory = Functions.getInt(T,"-memory", 24);
-		}else 
+
+		if(T.containsKey("-core")){
 			core =true;
+			memory = Functions.getInt(T,"-memory", 8);
+			
+			
+		}
+		else if(T.containsKey("-node")){
+			core =false;
+			node = Functions.getInt(T, "-node", 16);
+			memory = Functions.getInt(T,"-memory", 128);
+		}else{ 
+			core =true;
+			memory = Functions.getInt(T,"-memory", 8);
+		}
+
 		
 		projectNumber = Functions.getValue(T, "-pNr", "b2010035");
 		email = Functions.getValue(T, "-email", "johan.reimegard@scilifelab.se");
 		time = Functions.getValue(T, "-time");
-		
+
 
 		module = null;
 
@@ -415,28 +355,73 @@ public class SBATCHinfo {
 		if(core){
 			printSBATCHinfoCore(EW,directory,timestamp, String.valueOf(ID), program);
 		}else{
-			if(memory <= 72)
+			if(memory <= 512)
 				printSBATCHinfoNode(EW,directory,timestamp, String.valueOf(ID), program);
 			else
 				printSBATCHinfohalvan(EW,directory,timestamp, String.valueOf(ID), program);
 		}
 	}
-
 	
+
+
 	public void printSBATCHinfo(ExtendedWriter EW, String directory,
 			String timestamp, String ID, String program) {
 		if(core){
 			printSBATCHinfoCore(EW,directory,timestamp, ID, program);
 		}else{
-			if(memory <= 72)
+			if(memory <= 512)
 				printSBATCHinfoNode(EW,directory,timestamp, ID, program);
 			else
 				printSBATCHinfohalvan(EW,directory,timestamp, ID, program);
 		}
 	}
+	public int getNrOfCores(){
+		if(core) return memory/8+1;
+		else return node;
+	}
 	
-	
-	public void printSBATCHinfoNode(ExtendedWriter EW, String directory,
+	private void printSBATCHinfoCore(ExtendedWriter EW, String directory,
+			String timestamp, String ID, String program) {
+
+		if (!IOTools.isDir(directory + "/reports")) {
+			IOTools.mkDir(directory + "/reports");
+		}
+
+		String jobName = ID + "_" + program + "_" + timestamp;
+
+		EW.println("#! /bin/bash -l");
+		EW.println("#SBATCH -A " + projectNumber);
+		if(milou)
+		EW.println("#SBATCH -M milou");
+		
+		EW.println("#SBATCH -p core -n "+getNrOfCores());
+		
+		
+		EW.println("#SBATCH -t " + time);
+		EW.println("#SBATCH -J " + jobName);
+		EW.println("#SBATCH -e " + directory + "/reports/" + jobName
+				+ "_SLURM_Job_id=%j.stderr.txt");
+		EW.println("#SBATCH -o " + directory + "/reports/" + jobName
+				+ "_SLURM_Job_id=%j.stdout.txt");
+
+		if (email != null) {
+			EW.println("#SBATCH --mail-type=All");
+			EW.println("#SBATCH --mail-user=" + email);
+		}
+		if (module != null) {
+			EW.println();
+			EW.println();
+			EW.println("module load bioinfo-tools");
+			for (int i = 0; i < module.length; i++) {
+				EW.println("module load " + module[i]);
+			}
+		}
+
+		EW.println();
+		EW.println();
+	}
+
+	private void printSBATCHinfoNode(ExtendedWriter EW, String directory,
 			String timestamp, String ID, String program) {
 		if (!IOTools.isDir(directory + "/reports")) {
 			IOTools.mkDir(directory + "/reports");
@@ -450,13 +435,15 @@ public class SBATCHinfo {
 		EW.println("#! /bin/bash -l");
 		EW.println("#SBATCH -A " + projectNumber);
 		EW.println("#SBATCH -p node -n "+this.node+" ");
-		if(memory <= 24)
-			EW.println("#SBATCH -C thin");
-		else if(memory <= 36)
-			EW.println("#SBATCH -C Fat");
-		else if(memory <= 72)
-			EW.println("#SBATCH -C mem72GB");
-			
+		EW.println("#SBATCH -M milou");
+		if(memory >= 128){
+			if(memory <= 256){
+				EW.println("#SBATCH -C mem256GB");
+			}
+			else if(memory <= 512){
+				EW.println("#SBATCH -C mem512GB");
+			}
+		}
 		EW.println("#SBATCH -t " + time);
 		EW.println("#SBATCH -J " + jobName);
 		EW.println("#SBATCH -e " + directory + "/reports/" + jobName
@@ -481,10 +468,14 @@ public class SBATCHinfo {
 		EW.println();
 	}
 
+
 	
 	
 	
-	public void printSBATCHinfo(ExtendedWriter EW, String directory,
+	
+
+
+/*	public void printSBATCHinfo(ExtendedWriter EW, String directory,
 			String timestamp, int ID, String program, String time) {
 		if (!IOTools.isDir(directory + "/reports")) {
 			IOTools.mkDir(directory + "/reports");
@@ -522,8 +513,8 @@ public class SBATCHinfo {
 		EW.println();
 		EW.println();
 	}
-
-	public void printSBATCHinfo72GB(ExtendedWriter EW, String directory,
+*/
+	private void printSBATCHinfo72GB(ExtendedWriter EW, String directory,
 			String timestamp, int ID, String program, String time) {
 		if (!IOTools.isDir(directory + "/reports")) {
 			IOTools.mkDir(directory + "/reports");
@@ -560,7 +551,7 @@ public class SBATCHinfo {
 		EW.println();
 	}
 
-	public void printSBATCHinfoCore(ExtendedWriter EW, String directory,
+	private void printSBATCHinfoCore(ExtendedWriter EW, String directory,
 			String timestamp, int ID, String program, String time) {
 
 		if (!IOTools.isDir(directory + "/reports")) {
@@ -596,45 +587,9 @@ public class SBATCHinfo {
 		EW.println();
 	}
 
-	public void printSBATCHinfoCore(ExtendedWriter EW, String directory,
-			String timestamp, String ID, String program) {
 
-		if (!IOTools.isDir(directory + "/reports")) {
-			IOTools.mkDir(directory + "/reports");
-		}
 
-		String jobName = ID + "_" + program + "_" + timestamp;
-
-		EW.println("#! /bin/bash -l");
-		EW.println("#SBATCH -A " + projectNumber);
-		EW.println("#SBATCH -p core");
-		EW.println("#SBATCH -t " + time);
-		EW.println("#SBATCH -J " + jobName);
-		EW.println("#SBATCH -e " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stderr.txt");
-		EW.println("#SBATCH -o " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stdout.txt");
-
-		if (email != null) {
-			EW.println("#SBATCH --mail-type=All");
-			EW.println("#SBATCH --mail-user=" + email);
-		}
-		if (module != null) {
-			EW.println();
-			EW.println();
-			EW.println("module load bioinfo-tools");
-			for (int i = 0; i < module.length; i++) {
-				EW.println("module load " + module[i]);
-			}
-		}
-
-		EW.println();
-		EW.println();
-	}
-
-	
-	
-	public void printSBATCHinfoFat(ExtendedWriter EW, String directory,
+	private void printSBATCHinfoFat(ExtendedWriter EW, String directory,
 			String timestamp, int ID, String program, String time) {
 
 		if (!IOTools.isDir(directory + "/reports")) {
@@ -670,7 +625,7 @@ public class SBATCHinfo {
 		EW.println();
 	}
 
-	public void printSBATCHinfohalvan(ExtendedWriter EW, String directory,
+	private void printSBATCHinfohalvan(ExtendedWriter EW, String directory,
 			String timestamp, int ID, String program, String time, int MB) {
 		if (!IOTools.isDir(directory + "/reports")) {
 			IOTools.mkDir(directory + "/reports");
@@ -736,7 +691,7 @@ public class SBATCHinfo {
 		EW.println();
 	}
 
-	public void printSBATCHinfohalvan(ExtendedWriter EW, String directory,
+	private void printSBATCHinfohalvan(ExtendedWriter EW, String directory,
 			String timestamp, String ID, String program) {
 		if (!IOTools.isDir(directory + "/reports")) {
 			IOTools.mkDir(directory + "/reports");
@@ -801,7 +756,121 @@ public class SBATCHinfo {
 		EW.println();
 		EW.println();
 	}
+
+
+	public String getProjectNumber() {
+		return projectNumber;
+	}
+
+
+	public void setProjectNumber(String projectNumber) {
+		this.projectNumber = projectNumber;
+	}
+
+
+	public String getEmail() {
+		return email;
+	}
+
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+
+	public String[] getModule() {
+		return module;
+	}
+
+
+	public void setModule(String[] module) {
+		this.module = module;
+	}
+
+
+	public String getTime() {
+		return time;
+	}
+
+
+	public void setTime(String time) {
+		this.time = time;
+	}
+
+
+	public int getNode() {
+		return node;
+	}
+
+
+	public void setNode(int node) {
+		this.node = node;
+	}
+
+
+	public boolean isCore() {
+		return core;
+	}
+
+
+	public void setCore(boolean core) {
+		this.core = core;
+	}
+
+
+	public int getMemory() {
+		return memory;
+	}
+
+	public int getMemoryPadded() {
+		if(memory < 10)
+			return memory-1;
+		return memory-3;
+	}
 	
 	
-	
+
+	public void setMemory(int memory) {
+		if(memory <= 128)
+			this.memory = (int)Math.ceil((double)memory/(double)8);
+		else if(memory <= 256)
+			this.memory = (int)Math.ceil((double)memory/(double)16);
+		else if(memory <= 512)
+			this.memory = (int)Math.ceil((double)memory/(double)16);
+		else
+			this.memory = (int)Math.ceil((double)memory/(double)32);
+	}
+
+
+	public String getTimeStamp() {
+		return timeStamp;
+	}
+
+
+	public void setTimeStamp(String timeStamp) {
+		this.timeStamp = timeStamp;
+	}
+
+
+	public boolean isInteractive() {
+		return interactive;
+	}
+
+
+	public void setInteractive(boolean interactive) {
+		this.interactive = interactive;
+	}
+
+
+	public boolean isMilou() {
+		return milou;
+	}
+
+
+	public void setMilou(boolean milou) {
+		this.milou = milou;
+	}
+
+
+
 }

@@ -138,8 +138,7 @@ public class findORFs {
 
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 					sbatchFileName));
-			sbatch.printSBATCHinfo(EW, inDir, timestamp, 0, fileName
-					+ "_findORF", time);
+			sbatch.printSBATCHinfo(EW, inDir, timestamp, fileName, "findORF");
 
 			EW.println();
 			EW.println("cd " + inDir);

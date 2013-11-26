@@ -87,7 +87,7 @@ public class SeqPrep {
 
 		suffix = Functions.getValue(T, "-suffix", "fastq");
 		codeFile = Functions.getValue(T, "-codeFile",
-				"/bubo/home/h17/johanr/bin/SeqPrep");
+				"/gulo/glob/johanr/bin/SeqPrep");
 
 		if (allPresent)
 			filterFasta(projectDir, inDir, outDir);
@@ -142,8 +142,8 @@ public class SeqPrep {
 					generalSbatchScript.println("sbatch " + sbatchFileName);
 					ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 							sbatchFileName));
-					sbatch.printSBATCHinfoCore(EW, outDir, timeStamp, i,
-							"filter_fastq_" + i, time);
+					sbatch.printSBATCHinfo(EW, outDir, timeStamp, i,
+							"filter_fastq");
 					EW.println("cd " + inDir);
 					EW.print(codeFile);
 					if (hiseq)
@@ -170,12 +170,13 @@ public class SeqPrep {
 			String outDir, String forward, String reverse, String common) {
 
 		if (codeFile == null) {
-			codeFile = "/bubo/home/h17/johanr/bin/SeqPrep";
+			codeFile = "/gulo/glob/johanr/bin/SeqPrep";
 		}
 		EW.println();
 		EW.println();
 		EW.println("#############################################################################################################");
-		EW.println("Running SeqPrep START");
+		EW.println("## Running SeqPrep START");
+		EW.println("#############################################################################################################");
 		EW.println();
 		EW.println();
 
@@ -188,11 +189,38 @@ public class SeqPrep {
 				+ reverse + ".gz");
 		EW.println(" -s " + outDir + "/" + common + "merged.fastq.gz");
 		EW.println();
-		EW.println("running SeqPrep DONE");
+		EW.println("#############################################################################################################");
+		EW.println("## running SeqPrep DONE");
 		EW.println("#############################################################################################################");
 		EW.println();
 		EW.println();
 
 	}
 
+	public void filter_fastqSample(ExtendedWriter EW, String inDir,String forward, String reverse, String common) {
+		if (codeFile == null) {
+			codeFile = "/gulo/glob/johanr/bin/SeqPrep";
+		}
+		EW.println();
+		EW.println();
+		EW.println("#############################################################################################################");
+		EW.println("Running SeqPrep START");
+		EW.println();
+		EW.println();
+		EW.println("cd " + inDir);
+		EW.print(codeFile);
+		if (hiseq)
+			EW.print(" -6 ");
+		EW.print(" -f " + forward + " -r " + reverse);
+		EW.print(" -1 " + common + ".SeqPrep.1.fastq.gz -2 " +  common + ".SeqPrep.2.fastq.gz");
+		EW.println(" -s " + common + ".SeqPrep.merged.fastq.gz");
+		EW.println();
+		EW.println("running SeqPrep DONE");
+		EW.println("#############################################################################################################");
+		EW.println();
+		EW.println();
+
+	}
+	
+	
 }

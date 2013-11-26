@@ -273,32 +273,11 @@ public class Trinity {
 		}
 
 		String[] split1 = outDir.split("/");
-		String memory = "3G";
-		if (nrofMB < 3) {
-			System.out.println("Memory allocated will be 3 GB");
-			sbatch.printSBATCHinfoCore(EW, outDir, timestamp, count, "trinity_"
-					+ split1[split1.length - 1], newTime);
-			memory = "2G";
-		} else if (nrofMB < 24) {
-			System.out.println("Memory allocated will be 24 GB");
-			sbatch.printSBATCHinfo(EW, outDir, timestamp, count, "trinity_"
-					+ split1[split1.length - 1], newTime);
-			memory = "23G";
-		} else if (nrofMB < 36) {
-			System.out.println("Memory allocated will be 36 GB");
-			sbatch.printSBATCHinfoFat(EW, outDir, timestamp, count, "trinity_"
-					+ split1[split1.length - 1], newTime);
-			memory = "34G";
-		} else if (nrofMB < 72) {
-			System.out.println("Memory allocated will be 72 GB");
-			sbatch.printSBATCHinfo72GB(EW, outDir, timestamp, count, "trinity_"
-					+ split1[split1.length - 1], newTime);
-			memory = "70G";
-		} else {
-			sbatch.printSBATCHinfohalvan(EW, outDir, timestamp, count,
-					"trinity_" + split1[split1.length - 1], newTime, nrofMB);
-			memory = "72G";
-		}
+		
+		sbatch.setMemory(nrofMB-1);
+		sbatch.setTime(newTime);
+		sbatch.printSBATCHinfo(EW, outDir, timestamp, split1[split1.length - 1], "oases");
+
 
 		EW.println("module load bioinfo-tools");
 		EW.println("module load bowtie");
@@ -311,7 +290,7 @@ public class Trinity {
 		EW.println();
 		EW.println();
 
-		return memory;
+		return sbatch.getMemoryPadded()+"GB";
 	}
 
 	public void trinityFileStartSingle(String inDir, String outDir,
@@ -327,8 +306,7 @@ public class Trinity {
 			newTime = time;
 		}
 
-		sbatch.printSBATCHinfoCore(EW, outDir, timestamp, count, "trinity_"
-				+ count, newTime);
+		sbatch.printSBATCHinfo(EW, outDir, timestamp, count, "trinity");
 
 		EW.println("module load bioinfo-tools");
 		EW.println("module load bowtie");

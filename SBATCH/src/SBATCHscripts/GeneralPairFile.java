@@ -52,6 +52,8 @@ public class GeneralPairFile {
 		TOPHAT,
 		TOPHAT2,
 		BWA,
+		TRIMFASTQFILES,
+		CUTADAPT,
 		HELP
 	}	
 
@@ -63,22 +65,26 @@ public class GeneralPairFile {
 		String programName = Functions.getValue(T, "-program",Functions.getValue(T, "-p","help"));
 
 
-		if (!T.containsKey("-i") ||(!T.containsKey("-f1") &&!T.containsKey("-f2"))){
-			help();
-			return;
+		if (!T.containsKey("-i")){
+			if(!T.containsKey("-f1") &&!T.containsKey("-f2")){
+				help();
+				return;
+			}
 		}
+		
+		allPresent = testProgramParamters(T,sbatch);
 
 		inDir = Functions.getValue(T, "-i", null);
+		inDir = new File(inDir).getAbsolutePath();
 		forward = Functions.getValue(T, "-f1", null);
 		reverse = Functions.getValue(T, "-f2", null);
-		outDir = Functions.getValue(T, "-o", inDir + "_"+programName);
+		outDir = Functions.getValue(T, "-o", inDir);
+		outDir = new File(outDir).getAbsolutePath();
+		
 		projectDir = Functions.getValue(T, "-pDir", IOTools.getCurrentPath());
-		suffix = Functions.getValue(T, "-suffix", IOTools.getCurrentPath());
 		suffix = Functions.getValue(T, "-suffix", "fastq");
-		String seperator = Functions.getValue(T, "-sep", "1." + suffix + " 2."
-				+ suffix);
+		String seperator = Functions.getValue(T, "-sep", "1." + suffix + " 2."+ suffix);
 		this.sep = seperator.split(" ");
-
 
 		if (allPresent)
 			generalStart(T, sbatch);
@@ -91,24 +97,25 @@ public class GeneralPairFile {
 		try {
 			if (!IOTools.isDir(projectDir + "/scripts"))
 				IOTools.mkDir(projectDir + "/scripts");
+			String program = Functions.getValue(T, "-program", "");
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(projectDir
-					+ "/scripts/" + sbatch.timeStamp + "_startSBATCHScript.sh"));
+					+ "/scripts/" + sbatch.timeStamp + "_start_"+program+"_SBATCHScript.sh"));
 			if (this.inDir != null){				
-				generalDir(T, EW, sbatch,  inDir, projectDir + "/"
-						+ outDir);
-
+				generalDir(T, EW, sbatch,  inDir, outDir);
 			}
+
 			else if (this.forward != null && this.reverse != null) {
 				String folder = this.projectDir;
 				generalFileInitial(T, EW, sbatch,  folder, folder,
 						this.forward, this.reverse);
 			}
-
 			EW.flush();
 			EW.close();
+			
+			System.out.println("All things seems to have run properly!");
 			System.out.println("To start all the scripts write ");
-			System.out.println(projectDir + "/scripts/" + sbatch.timeStamp
-					+ "_startSBATCHScript.sh");
+			System.out.println("sh "+projectDir + "/scripts/" + sbatch.timeStamp	
+					+ "_start_"+program+"_SBATCHScript.sh");
 
 		} catch (Exception E) {
 			E.printStackTrace();
@@ -134,6 +141,12 @@ public class GeneralPairFile {
 			String inDir, String outDir) {
 
 		ArrayList<String> fileNames = IOTools.getSequenceFiles(inDir, suffix);
+		if(fileNames == null){
+			System.out.println("Something very wrong with this file path");
+			System.out.println(inDir);
+			return;
+			
+		}
 		ArrayList<String[]> pairs = IOTools.findPairs(fileNames, sep);
 		if (!pairs.isEmpty()) {
 			if (!IOTools.isDir(outDir))
@@ -171,10 +184,23 @@ public class GeneralPairFile {
 			case STAR:
 				STAR star = new STAR();
 				if(star.addParameters(T,sbatch)){
-					star.STARFile(generalSbatchScript, sbatch, inDir, outDir,
+					star.STARFile(generalSbatchScript, sbatch, new File(inDir).getAbsolutePath(), outDir,
 							fileName1,fileName2);
 				}
 				break;
+			case TRIMFASTQFILES:
+				TrimFastqFiles TFF = new TrimFastqFiles();
+				if(TFF.addParameters(T)){
+					TFF.trimFastQFiles(sbatch, generalSbatchScript, inDir, fileName1, fileName2);
+				}
+				break;
+				
+			case CUTADAPT:
+				CutAdapt ca = new CutAdapt();
+				ca.addParameters(T);
+				ca.trimFastQFiles(sbatch, generalSbatchScript, inDir, fileName1, fileName2);
+				break;
+				
 			case TOPHAT:
 				System.out.println("Not yet implemented");
 				break;
@@ -188,6 +214,42 @@ public class GeneralPairFile {
 		}
 
 
+		public boolean testProgramParamters(Hashtable<String, String> T,
+				SBATCHinfo sbatch) {
+
+			String programName = Functions.getValue(T, "-program",Functions.getValue(T, "-p","help"));
+			Programs program = Programs.valueOf(programName.toUpperCase());
+
+			switch (program) {
+			case STAR:
+				STAR star = new STAR();
+				return star.addParameters(T,sbatch);
+			case TRIMFASTQFILES:
+				TrimFastqFiles TFF = new TrimFastqFiles();
+				return TFF.addParameters(T);
+			case BWA:
+				BWA bwa = new BWA();
+				return bwa.checkParameters(T);
+			case CUTADAPT:
+				CutAdapt ca = new CutAdapt();
+				return ca.checkParameters(T);
+			case TOPHAT:
+				System.out.println("Not yet implemented");
+				return true;
+			case TOPHAT2:
+				System.out.println("Not yet implemented");
+				return true;
+			default: 
+				System.out.println(programName+" is not yet implemented");
+				return false;	
+
+			}			
+
+		}
+		
+		
+		
+		
 		public void help(){
 
 			System.out.println("Mandatory values for paired sequences:");
@@ -201,7 +263,6 @@ public class GeneralPairFile {
 			System.out.println(Functions.fixedLength("-sep <sep1> <sep2>", 30)+" program assumens pair of files have name unique<sep[1|2]><suffix> (-sep 1 2)");
 			System.out.println(Functions.fixedLength("", 30)+"e.g  file.1.fastq file.2.fastq");
 
-			System.out.println("To start any program you have to specify the -program <program> flag. Available programs are listed below.");
 
 			for (Programs info : EnumSet.allOf(Programs.class)) {
 				System.out.println(info);

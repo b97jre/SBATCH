@@ -31,9 +31,9 @@ public class Blast {
 			blastProgram = "blastn";
 			protein = false;
 		}
-		if (T.containsKey("-blastDB"))
+		if (T.containsKey("-blastDB")){
 			blastDB = Functions.getValue(T, "-blastDB");
-		else {
+		}else {
 			if (protein)
 				blastDB = "/bubo/nobackup/uppnex/blast_databases/nr";
 			else
@@ -41,7 +41,21 @@ public class Blast {
 			System.out.println("blastDB is " + blastDB
 					+ " to change add flag -blastDB <yourBlastDB>");
 		}
-
+		
+		
+	}
+	
+	public static void help(){
+		System.out.println("");
+		System.out.println("Blast specific flags");
+		System.out.println(Functions.fixedLength("-blastp or -blastn",30)+"blastn is default");
+		System.out.println(Functions.fixedLength("-blastDB <pathToBlastDB>",30)+"nt is default for blastn");
+		System.out.println(Functions.fixedLength(" ",30)+"nr is default for blastp");
+		System.out.println("");
+		
+		
+		
+		
 	}
 
 	public  void run(Hashtable<String, String> T,

@@ -141,8 +141,7 @@ public class ShrimpSBATCH {
 
 				ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 						sbatchFileName));
-				sbatch.printSBATCHinfo(EW, inDir, timestamp, count, "SHRIMP",
-						time);
+				sbatch.printSBATCHinfo(EW, inDir, timestamp, count, "SHRIMP");
 
 				EW.println("cd " + inDir);
 				EW.println();
@@ -175,7 +174,7 @@ public class ShrimpSBATCH {
 						generalSbatchScript.println("sbatch " + sbatchFileName);
 						EW = new ExtendedWriter(new FileWriter(sbatchFileName));
 						sbatch.printSBATCHinfo(EW, inDir, timestamp, count,
-								"SHRIMP", time);
+								"SHRIMP");
 						EW.println("cd " + inDir);
 						EW.println();
 						EW.println();

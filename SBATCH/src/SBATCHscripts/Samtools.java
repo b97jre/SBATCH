@@ -4,11 +4,12 @@ import general.ExtendedWriter;
 import general.Functions;
 import general.IOTools;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Hashtable;
 
-public class SamtoolsSBATCH {
+public class Samtools {
 
 	String inDir;
 	String projectDir;
@@ -26,9 +27,9 @@ public class SamtoolsSBATCH {
 	boolean flagstat;
 	boolean idxstat;
 
-	public SamtoolsSBATCH() {
+	public Samtools() {
 		inDir = projectDir = suffix = time = null;
-		merge = sort = header = view = index = flagstat = false;
+		merge = sort = header = view = index = flagstat = idxstat= false;
 	}
 
 	public static void main(String[] args) {
@@ -42,6 +43,23 @@ public class SamtoolsSBATCH {
 		Hashtable<String, String> T = Functions.parseCommandLine(args);
 		FilterFastqSBATCH filter = new FilterFastqSBATCH();
 		filter.run(T);
+	}
+	
+	
+	public void help(){
+		System.out.println("flags:");
+		System.out.println(Functions.fixedLength("-view ",30)+"According to samtools manual");
+		System.out.println(Functions.fixedLength("-h ",30)+"Adding header according to samtools manual");
+		System.out.println(Functions.fixedLength("-sort ",30)+"According to samtools manual");
+		System.out.println(Functions.fixedLength("-flagstat ",30)+"According to samtools manual");
+		System.out.println(Functions.fixedLength("-idxstat ",30)+"According to samtools manual");
+		System.out.println(Functions.fixedLength("-index ",30)+"According to samtools manual");
+		System.out.println(Functions.fixedLength("-All ",30)+"Doing all step listed above");
+		System.out.println();
+		System.out.println();
+		System.out.println();
+		System.out.println(Functions.fixedLength("-view ",30)+"According to samtools manual");
+		
 	}
 
 	public void run(Hashtable<String, String> T) {
@@ -104,6 +122,83 @@ public class SamtoolsSBATCH {
 					.println("\n\nAborting run because of missing arguments for samtools.");
 	}
 
+	public void setParameters(Hashtable<String, String> T) {
+
+		boolean allPresent = true;
+		suffix = Functions.getValue(T, "-suffix", "sam");
+
+		F = Functions.getInt(T, "-F", 0);
+		f = Functions.getInt(T, "-f", 0);
+
+		if (T.containsKey("-view"))
+			this.view = true;
+		if (T.containsKey("-h"))
+			this.header = true;
+		if (T.containsKey("-sort"))
+			this.sort = true;
+		if (T.containsKey("-flagstat"))
+			this.flagstat = true;
+		if (T.containsKey("-idxstat"))
+			this.idxstat = true;
+		if (T.containsKey("-index"))
+			this.index = true;
+		if (T.containsKey("-All") || sort == header == view == index == flagstat == idxstat == false) {
+			sort = header = view = index = flagstat = idxstat = true;
+		}
+
+		if (T.containsKey("-merge"))
+			this.merge = true;
+
+	}
+	
+	
+	public boolean checkParameters(Hashtable<String, String> T) {
+		boolean allPresent = true;
+		if (!T.containsKey("-i"))
+			allPresent = false;
+		if (!T.containsKey("-i"))
+			suffix = Functions.getValue(T, "-suffix", "sam");
+		else
+			suffix = inDir.substring(inDir.lastIndexOf(".") + 1);
+		if (!T.containsKey("-suffix"))
+			System.out
+					.println("must contain a suffix e.g. -suffix sam/bam now set to "
+							+ suffix);
+		F = Functions.getInt(T, "-F", 0);
+		f = Functions.getInt(T, "-f", 0);
+
+		if (T.containsKey("-view"))
+			this.view = true;
+		if (T.containsKey("-h"))
+			this.header = true;
+		if (T.containsKey("-sort"))
+			this.sort = true;
+		if (T.containsKey("-flagstat"))
+			this.flagstat = true;
+		if (T.containsKey("-idxstat"))
+			this.idxstat = true;
+		if (T.containsKey("-index"))
+			this.index = true;
+		if (T.containsKey("-All")) {
+			sort = header = view = index = flagstat = idxstat = true;
+		}
+
+		if (T.containsKey("-merge"))
+			this.merge = true;
+
+		if(allPresent) return true;
+		else 
+			help();
+		System.out
+		.println("\n\nAborting run because of missing arguments for samtools.");
+			return false;
+	}
+	
+	
+	
+	
+	
+	
 	public void samtoolsTop(SBATCHinfo sbatch, String timeStamp, String suffix) {
 		try {
 			if (!IOTools.isDir(projectDir + "/scripts"))
@@ -111,7 +206,7 @@ public class SamtoolsSBATCH {
 			if (IOTools.fileExists(projectDir + "/" + inDir)
 					&& !IOTools.isDir(projectDir + "/" + inDir)) {
 				samtoolsFile(sbatch, projectDir + "/" + inDir, projectDir,
-						timeStamp, suffix, 0);
+						 suffix);
 			} else if (IOTools.isDir(projectDir + "/" + inDir)) {
 				ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 						projectDir + "/scripts/" + timeStamp + "_samtools.sh"));
@@ -163,8 +258,7 @@ public class SamtoolsSBATCH {
 
 					ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 							sbatchFileName));
-					sbatch.printSBATCHinfoCore(EW, finalInDir, timestamp,
-							count, "samtools" + "_" + lastDir, time);
+					sbatch.printSBATCHinfo(EW, finalInDir, timestamp,fileNames.get(i) ,"samtools");
 
 					EW.println("module load bioinfo-tools");
 					EW.println();
@@ -201,31 +295,27 @@ public class SamtoolsSBATCH {
 	}
 
 	public void samtoolsFile(SBATCHinfo sbatch, String fileName,
-			String finalOutDir, String timestamp, String suffix, int count) {
+			String finalOutDir,String suffix) {
 
 		if (!IOTools.isDir(finalOutDir + "/reports"))
-			IOTools.mkDir(finalOutDir + "/reports");
+			IOTools.mkDirs(finalOutDir + "/reports");
 		if (!IOTools.isDir(finalOutDir + "/scripts"))
 			IOTools.mkDir(finalOutDir + "/scripts");
 
 		try {
-			String[] dirs = finalOutDir.split("/");
-			String lastDir = dirs[dirs.length - 1];
-
-			int start = 0;
+			
+			File temp = new File(fileName);
+			String fileNameString = temp.getName();
 			// convert sam to bam
-			String sbatchFileName = finalOutDir + "/scripts/" + timestamp + "_"
-					+ lastDir + ".samtools.sbatch";
+			String sbatchFileName = finalOutDir + "/scripts/" + sbatch.getTimeStamp() + "_"
+					+ fileNameString + ".samtools.sbatch";
 
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 					sbatchFileName));
-			sbatch.printSBATCHinfoCore(EW, finalOutDir, timestamp, count,
-					"samtools" + "_" + lastDir, time);
+			sbatch.printSBATCHinfo(EW, finalOutDir, sbatch.getTimeStamp() , fileNameString, "samtools");
 
 			EW.println("cd " + finalOutDir);
 			EW.println();
-
-			String nameBase = fileName.substring(0, fileName.indexOf(suffix));
 			if (suffix.indexOf("sam") > -1)
 				sam2bam(EW, fileName, f, F, sort, header, view, flagstat, index);
 			else
@@ -239,6 +329,17 @@ public class SamtoolsSBATCH {
 
 	}
 
+	public void samtoolsFile(ExtendedWriter EW, SBATCHinfo sbatch, String fileName,
+			String finalOutDir,String suffix) {
+			EW.println("cd " + finalOutDir);
+			EW.println();
+			if (suffix.indexOf("sam") > -1)
+				sam2bam(EW, fileName, f, F, sort, header, view, flagstat, index);
+			else
+				bam2bam(EW, fileName, f, F, sort, header, view, flagstat, index);
+	}
+
+	
 	public static String sam2bam(ExtendedWriter EW, String samFile, int f,
 			int F, boolean sort, boolean header, boolean view,
 			boolean flagstat, boolean index) {
@@ -358,8 +459,8 @@ public class SamtoolsSBATCH {
 					generalSbatchScript.println("sbatch " + sbatchFileName);
 					ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 							sbatchFileName));
-					sbatch.printSBATCHinfoCore(EW, finalInDir, timestamp,
-							count, "samtools" + "_" + lastDir, time);
+					sbatch.printSBATCHinfo(EW, finalInDir, timestamp,
+							count, "samtools" + "_" + lastDir);
 
 					EW.println("module load bioinfo-tools");
 					EW.println();
@@ -423,7 +524,7 @@ public class SamtoolsSBATCH {
 				ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 						sbatchFileName));
 				sbatch.printSBATCHinfo(EW, finalInDir, timestamp, count,
-						"samtools" + "_" + lastDir, time);
+						"samtools" + "_" + lastDir);
 
 				EW.println("module load bioinfo-tools");
 				EW.println("module load samtools");
@@ -493,7 +594,7 @@ public class SamtoolsSBATCH {
 						generalSbatchScript.println("sbatch " + sbatchFileName);
 						EW = new ExtendedWriter(new FileWriter(sbatchFileName));
 						sbatch.printSBATCHinfo(EW, finalInDir, timestamp,
-								count, "samtools" + "_" + lastDir, time);
+								count, "samtools" + "_" + lastDir);
 
 						EW.println("module load bioinfo-tools");
 						EW.println("module load samtools");

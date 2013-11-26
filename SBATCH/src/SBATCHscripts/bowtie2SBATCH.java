@@ -59,36 +59,16 @@ public class bowtie2SBATCH {
 		System.out.println();
 		Hashtable<String, String> T = Functions.parseCommandLine(args);
 		bowtie2SBATCH bowtie2 = new bowtie2SBATCH();
-		bowtie2.run(T);
+		//bowtie2.run(T);
 	}
 
-	public void run(Hashtable<String, String> T) {
+	public boolean checkParameters(Hashtable<String, String> T) {
 
 		String inDir, outDir, logDir;
 		inDir = outDir = logDir = null;
 		boolean allPresent = true;
 		this.normal = this.strict = this.superStrict = this.ends = this.sensitive = false;
 		this.strict = true;
-
-		String timeStamp = Functions
-				.getValue(T, "-TS", Functions.getDateTime());
-		SBATCHinfo sbatch = new SBATCHinfo();
-		if (!sbatch.addSBATCHinfo(T)) {
-			allPresent = false;
-			return;
-		}
-
-		this.files = false;
-		if (T.containsKey("-i"))
-			inDir = Functions.getValue(T, "-i", ".");
-		else if (T.containsKey("-f1") && T.containsKey("-f2")) {
-			forward = Functions.getValue(T, "-f1", ".");
-			reverse = Functions.getValue(T, "-f2", ".");
-			this.files = true;
-		} else {
-			System.out.println("must contain inDirectory -i or f1 and f2");
-			allPresent = false;
-		}
 
 		if (T.containsKey("-normal")) {
 			this.normal = true;
@@ -115,7 +95,6 @@ public class bowtie2SBATCH {
 			this.sensitive = true;
 		}
 
-		projectDir = Functions.getValue(T, "-pDir", IOTools.getCurrentPath());
 
 		if (T.containsKey("-o"))
 			outDir = Functions.getValue(T, "-o", ".");
@@ -131,25 +110,6 @@ public class bowtie2SBATCH {
 			allPresent = false;
 		}
 
-		if (T.containsKey("-time"))
-			time = Functions.getValue(T, "-time", ".");
-		else {
-			System.out.println("must contain likely time -time");
-			allPresent = false;
-		}
-		suffix = Functions.getValue(T, "-suffix", "fastq");
-		String seperator = Functions.getValue(T, "-sep", "1." + suffix + " 2."
-				+ suffix);
-		this.sep = seperator.split(" ");
-
-		if (projectDir.compareTo("notPresent") != 0) {
-			inDir = projectDir + "/" + inDir;
-			outDir = projectDir + "/" + outDir;
-			referenceFile = projectDir + "/" + referenceFile;
-			logDir = projectDir + "/" + logDir;
-		} else {
-			projectDir = inDir;
-		}
 
 		L = Integer.parseInt(Functions.getValue(T, "-L", "22"));
 		M = Integer.parseInt(Functions.getValue(T, "-M", "8"));
@@ -157,13 +117,64 @@ public class bowtie2SBATCH {
 		percent = Integer.parseInt(Functions.getValue(T, "-percent", "35"));
 		X = Integer.parseInt(Functions.getValue(T, "-X", "1000"));
 
-		if (T.containsKey("-searchspace"))
-			findOptimalValues(T, sbatch, timeStamp, outDir);
-		else if (allPresent)
-			bowtie2(sbatch, timeStamp, inDir, outDir);
-		else
-			System.out
-					.println("\n\nAborting run because of missing arguments for bowtie2.");
+		return allPresent;
+	}
+	
+	
+	public void addParameters(Hashtable<String, String> T) {
+		String inDir, outDir, logDir;
+		inDir = outDir = logDir = null;
+		boolean allPresent = true;
+		this.normal = this.strict = this.superStrict = this.ends = this.sensitive = false;
+		this.strict = true;
+
+		if (T.containsKey("-normal")) {
+			this.normal = true;
+			this.sensitive = false;
+		}
+
+		if (T.containsKey("-strict")) {
+			this.strict = true;
+			this.sensitive = false;
+		}
+
+		if (T.containsKey("-superStrict")) {
+			this.superStrict = true;
+			this.sensitive = false;
+		}
+
+		if (T.containsKey("-ends")) {
+			this.ends = true;
+			this.sensitive = false;
+		}
+
+		if (T.containsKey("-sensitive")) {
+			this.strict = false;
+			this.sensitive = true;
+		}
+
+
+		if (T.containsKey("-o"))
+			outDir = Functions.getValue(T, "-o", ".");
+		else {
+			System.out.println("must contain outDirectory -o");
+			allPresent = false;
+		}
+
+		if (T.containsKey("-refFile"))
+			referenceFile = Functions.getValue(T, "-refFile", ".");
+		else {
+			System.out.println("must contain referenceFile -refFile");
+			allPresent = false;
+		}
+
+
+		L = Integer.parseInt(Functions.getValue(T, "-L", "22"));
+		M = Integer.parseInt(Functions.getValue(T, "-M", "8"));
+		N = Integer.parseInt(Functions.getValue(T, "-N", "1"));
+		percent = Integer.parseInt(Functions.getValue(T, "-percent", "35"));
+		X = Integer.parseInt(Functions.getValue(T, "-X", "1000"));
+
 	}
 
 	public void findOptimalValues(Hashtable<String, String> T,
@@ -195,25 +206,6 @@ public class bowtie2SBATCH {
 		}
 	}
 
-	public void bowtie2(SBATCHinfo sbatch, String timeStamp, String inDir,
-			String outDir) {
-		try {
-			if (!IOTools.isDir(projectDir + "/scripts"))
-				IOTools.mkDir(projectDir + "/scripts");
-			ExtendedWriter EW = new ExtendedWriter(new FileWriter(projectDir
-					+ "/scripts/" + timeStamp + ".bowtie2.sh"));
-			if (files) {
-				bowtie2File(EW, sbatch, timeStamp, outDir, forward, reverse);
-			} else {
-				bowtie2Dir(EW, sbatch, timeStamp, inDir, outDir);
-			}
-
-			EW.flush();
-			EW.close();
-		} catch (Exception E) {
-			E.printStackTrace();
-		}
-	}
 
 	public void searchSpace(ExtendedWriter generalSbatchScript,
 			SBATCHinfo sbatch, String inFile1, String inFile2, String outDir,
@@ -245,7 +237,7 @@ public class bowtie2SBATCH {
 					ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 							sbatchFileName));
 					sbatch.printSBATCHinfo(EW, outDir, timestamp, count,
-							"bowtie2_" + suffix + "_" + count, time);
+							"bowtie2");
 
 					EW.println("cd " + projectDir);
 
@@ -402,160 +394,6 @@ public class bowtie2SBATCH {
 
 	}
 
-	public void bowtie2Dir(ExtendedWriter generalSbatchScript,
-			SBATCHinfo sbatch, String timestamp, String inDir, String outDir) {
-
-		ArrayList<String> fileNames = IOTools.getSequenceFiles(inDir, suffix);
-		if (fileNames.isEmpty()) {
-			System.out.println("No " + suffix + " files in folder :" + inDir);
-			if (!IOTools.isDir(outDir))
-				IOTools.mkDir(outDir);
-		} else {
-			if (!IOTools.isDir(outDir))
-				IOTools.mkDir(outDir);
-			if (!IOTools.isDir(outDir + "/reports"))
-				IOTools.mkDir(outDir + "/reports");
-			if (!IOTools.isDir(outDir + "/scripts"))
-				IOTools.mkDir(outDir + "/scripts");
-			int count = 0;
-			try {
-				ArrayList<String[]> pairs = IOTools.findPairs(fileNames, sep);
-				if (pairs.size() != 0) {
-					String sbatchFileName = outDir + "/scripts/" + timestamp
-							+ "_" + count + "_bowtie2.sbatch";
-					generalSbatchScript.println("sbatch " + sbatchFileName);
-
-					ExtendedWriter EW = new ExtendedWriter(new FileWriter(
-							sbatchFileName));
-					String[] split1 = outDir.split("/");
-					int nrOfThreads = Math.max(1, 8 / pairs.size());
-
-					sbatch.printSBATCHinfo(EW, outDir, timestamp, count,
-							"bowtie2_" + split1[split1.length - 1], time);
-
-					EW.println("module load bioinfo-tools");
-					EW.println("module load bowtie2/2.0.0-beta6");
-
-					EW.println("cd " + inDir);
-
-					EW.println();
-					EW.println();
-
-					String[] temp = referenceFile.split("/");
-					String refName = referenceFile;
-					if (temp.length > 1)
-						refName = temp[temp.length - 1];
-
-					for (int i = 0; i < pairs.size(); i++) {
-						temp = pairs.get(i)[0].split("\\.");
-						String[] temp2 = pairs.get(i)[0].split("\\.");
-						String query = "";
-						for (int j = 0; j < temp2.length - 1; j++) {
-							if (temp[j].compareTo(temp2[j]) == 0)
-								query += temp[j];
-						}
-						if (sensitive)
-							bowtie2File(EW, referenceFile,
-									inDir + "/" + pairs.get(i)[0], inDir + "/"
-											+ pairs.get(i)[1], outDir + "/"
-											+ query + "_" + refName + ".sam",
-									M, N, L, percent, X, nrOfThreads);
-						else if (normal)
-							bowtie2FileNormal(EW, referenceFile, inDir + "/"
-									+ pairs.get(i)[0],
-									inDir + "/" + pairs.get(i)[1], outDir + "/"
-											+ query + "_" + refName
-											+ ".normal.sam", nrOfThreads);
-						else if (strict)
-							bowtie2FileStrict(EW, referenceFile, inDir + "/"
-									+ pairs.get(i)[0],
-									inDir + "/" + pairs.get(i)[1], outDir + "/"
-											+ query + "_" + refName
-											+ ".strict.sam", outDir + "/"
-											+ query + "_" + refName
-											+ ".not_paired.fastq", nrOfThreads);
-						else if (superStrict)
-							bowtie2FileSuperStrict(EW, referenceFile, inDir
-									+ "/" + pairs.get(i)[0], inDir + "/"
-									+ pairs.get(i)[1], outDir + "/" + query
-									+ "_" + refName + ".strict.sam", outDir
-									+ "/" + query + "_" + refName
-									+ ".not_paired.fastq", nrOfThreads);
-						else if (ends)
-							bowtie2FileSuperStrictEnds(EW, referenceFile, inDir
-									+ "/" + pairs.get(i)[0], inDir + "/"
-									+ pairs.get(i)[1], outDir + "/" + query
-									+ "_" + refName + ".strict.sam", outDir
-									+ "/" + query + "_" + refName
-									+ ".not_paired.fastq", nrOfThreads);
-
-						// // bowtie2 -r 100 --mate-std-dev 50 -o
-						// /bubo/proj/b2011098/private/bowtie2/
-						// /bubo/proj/b2011098/private/reference/GCAT
-						// /bubo/proj/b2011098/private/temp/13\:2-T.1.filtered.fastq.filtered.fastq
-						// /bubo/proj/b2011098/private/temp/13\:2-T.2.filtered.fastq.filtered.fastq
-						// EW.println
-						// ("bowtie2  -r "+this.innerDistance+" --mate-std-dev "+this.innerDistanceSTD
-						// +" "+this.referenceFile+ " "+ pairs.get(i)[0]+
-						// " "+pairs.get(i)[1]+ " &");
-						// System.out.println
-						// ("bowtie2  -r "+this.innerDistance+" --mate-std-dev "+this.innerDistanceSTD
-						// +" "+this.referenceFile+ " "+ pairs.get(i)[0]+
-						// " "+pairs.get(i)[1]+ " &");
-						if ((i + 1) % 8 == 0 && fileNames.size() - i != 2) {
-
-							EW.println();
-							EW.println();
-							EW.println("wait");
-							EW.flush();
-							EW.close();
-							count++;
-
-							sbatchFileName = outDir + "/scripts/" + timestamp
-									+ "_" + count + "_bowtie2.sbatch";
-							generalSbatchScript.println("sbatch "
-									+ sbatchFileName);
-							EW = new ExtendedWriter(new FileWriter(
-									sbatchFileName));
-							sbatch.printSBATCHinfo(EW, outDir, timestamp,
-									count, "bowtie2_"
-											+ split1[split1.length - 1], time);
-							EW.println("cd " + inDir);
-							EW.println();
-							EW.println();
-						}
-					}
-
-					EW.println();
-					EW.println();
-					EW.println("wait");
-
-					EW.flush();
-					EW.close();
-
-				} else {
-					System.out.println(sep[0]);
-					System.out.println(sep[1]);
-
-					for (int i = 0; i < fileNames.size(); i++) {
-						System.out.println(fileNames.get(i));
-					}
-				}
-			} catch (Exception E) {
-				E.printStackTrace();
-			}
-
-			count++;
-
-		}
-		ArrayList<String> subDirs = IOTools.getDirectories(inDir);
-		for (int i = 0; i < subDirs.size(); i++) {
-			bowtie2Dir(generalSbatchScript, sbatch, timestamp, inDir + "/"
-					+ subDirs.get(i), outDir + "/" + subDirs.get(i));
-		}
-
-	}
-
 	public void bowtie2File(ExtendedWriter generalSbatchScript,
 			SBATCHinfo sbatch, String timestamp, String outDir, String forward,
 			String reverse) {
@@ -575,7 +413,7 @@ public class bowtie2SBATCH {
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 					sbatchFileName));
 
-			sbatch.printSBATCHinfo(EW, outDir, timestamp, 0, "bowtie2", time);
+			sbatch.printSBATCHinfo(EW, outDir, timestamp, 0, "bowtie2");
 
 			EW.println("module load bioinfo-tools");
 			EW.println("module load bowtie2/2.0.0-beta6");
@@ -595,6 +433,7 @@ public class bowtie2SBATCH {
 					query = query + "_" + temp[j];
 			}
 
+			int nrOfThreads = sbatch.getNrOfCores();
 			temp = referenceFile.split("/");
 			String refName = referenceFile;
 			if (temp.length > 1)
@@ -602,27 +441,27 @@ public class bowtie2SBATCH {
 			if (sensitive)
 				bowtie2File(EW, referenceFile, projectDir + "/" + forward,
 						projectDir + "/" + reverse, outDir + "/" + query + "_"
-								+ refName + ".sam", M, N, L, percent, X, 8);
+								+ refName + ".sam", M, N, L, percent, X, nrOfThreads);
 			else if (normal)
 				bowtie2FileNormal(EW, referenceFile,
 						projectDir + "/" + forward, projectDir + "/" + reverse,
-						outDir + "/" + query + "_" + refName + ".normal.sam", 8);
+						outDir + "/" + query + "_" + refName + ".normal.sam", nrOfThreads);
 			else if (strict)
 				bowtie2FileStrict(EW, referenceFile,
 						projectDir + "/" + forward, projectDir + "/" + reverse,
 						outDir + "/" + query + "_" + refName + ".strict.sam",
 						outDir + "/" + query + "_" + refName
-								+ ".not_paired.fastq", 8);
+								+ ".not_paired.fastq", nrOfThreads);
 			else if (superStrict)
 				bowtie2FileSuperStrict(EW, referenceFile, projectDir + "/"
 						+ forward, projectDir + "/" + reverse, outDir + "/"
 						+ query + "_" + refName + ".strict.sam", outDir + "/"
-						+ query + "_" + refName + ".not_paired.fastq", 8);
+						+ query + "_" + refName + ".not_paired.fastq", nrOfThreads);
 			else if (ends)
 				bowtie2FileSuperStrictEnds(EW, referenceFile, projectDir + "/"
 						+ forward, projectDir + "/" + reverse, outDir + "/"
 						+ query + "_" + refName + ".strict.sam", outDir + "/"
-						+ query + "_" + refName + ".not_paired.fastq", 8);
+						+ query + "_" + refName + ".not_paired.fastq", nrOfThreads);
 
 			EW.println();
 			EW.println();

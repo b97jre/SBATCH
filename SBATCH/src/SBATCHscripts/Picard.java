@@ -151,18 +151,6 @@ public class Picard {
 
 		EW.println();
 		EW.println("cd " + outDir);
-		if (suffix.indexOf("sam") > -1) {
-			for (int i = 0; i < fileNames.size(); i++) {
-				String samFile = fileNames.get(i);
-				String bamFile = samFile.substring(0,
-						samFile.lastIndexOf("sam"))
-						+ "bam";
-				fileNames.set(i, bamFile);
-				SamtoolsSBATCH.sam2bam(EW, samFile, -1, -1, false, true, true,
-						false, false);
-			}
-		}
-
 		for (int i = 0; i < fileNames.size(); i++) {
 			System.out.println(fileNames.get(i));
 			String bamFile = fileNames.get(i);
@@ -292,7 +280,7 @@ public class Picard {
 
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 					sbatchFileName));
-			sbatch.printSBATCHinfo(EW, outDir, timestamp, 0, "Picard", time);
+			sbatch.printSBATCHinfo(EW, outDir, timestamp,  "Picard", time);
 
 			EW.println();
 			EW.println("cd " + outDir);
@@ -383,7 +371,7 @@ public class Picard {
 		// "Inter3-1_DNA_ATCACG_L005_R1_001fastq_Crubella_183.strict.sam"
 
 		if (suffix.indexOf("sam") > -1) {
-			bamFile = SamtoolsSBATCH.sam2bam(EW, bamFile, -1, -1, false, true,
+			bamFile = Samtools.sam2bam(EW, bamFile, -1, -1, false, true,
 					true, false, false);
 		}
 
@@ -405,7 +393,7 @@ public class Picard {
 				+ ".AddOrReplaceReadGroups";
 		EW.println();
 
-		String bowtiecommand = "java -Xmx" + memory + "G -jar " + jarDir
+		String AddOrReplaceReadGroupsCommand = "java -Xmx" + memory + "G -jar " + jarDir
 				+ "/AddOrReplaceReadGroups.jar INPUT=" + inFile1 + " OUTPUT="
 				+ baseFile + "." + suffix + " RGID=" + RGID + " " + // String
 																	// Read
@@ -454,8 +442,8 @@ public class Picard {
 																			// queryname,
 																			// coordinate}
 
-		System.out.println(bowtiecommand);
-		EW.println(bowtiecommand);
+		System.out.println(AddOrReplaceReadGroupsCommand);
+		EW.println(AddOrReplaceReadGroupsCommand);
 		EW.println();
 		return baseFile;
 

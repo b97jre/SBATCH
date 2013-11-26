@@ -144,8 +144,8 @@ public class FilterFastqSBATCH {
 
 				ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 						sbatchFileName));
-				sbatch.printSBATCHinfo(EW, finalOutDir, timestamp, count2,
-						"filter_fastq_" + sample, time);
+				sbatch.printSBATCHinfo(EW, finalOutDir, timestamp, sample,
+						"filter_fastq");
 				EW.println("cd " + finalInDir);
 
 				ArrayList<String[]> pairs = IOTools.findPairs(fileNames, sep);

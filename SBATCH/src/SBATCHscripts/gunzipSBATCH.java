@@ -85,12 +85,12 @@ public class gunzipSBATCH {
 				IOTools.mkDir(projectDir + "/scripts");
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(projectDir
 					+ "/scripts/" + timeStamp + "_gunzip.sh"));
-			if (!all)
-				gunzipDir(EW, sbatch, projectDir + "/" + inDir, timeStamp,
-						suffix, 0, compress);
-			else
-				gunzipDirAll(EW, sbatch, projectDir + "/" + inDir, timeStamp,
-						0, compress);
+//			if (!all)
+//				gunzipDir(EW, sbatch, projectDir + "/" + inDir, timeStamp,
+//						suffix, 0, compress);
+//			else
+//				gunzipDirAll(EW, sbatch, projectDir + "/" + inDir, timeStamp,
+//						0, compress);
 			EW.flush();
 			EW.close();
 		} catch (Exception E) {
@@ -98,181 +98,180 @@ public class gunzipSBATCH {
 		}
 	}
 
-	public void gunzipDir(ExtendedWriter generalSbatchScript,
-			SBATCHinfo sbatch, String finalInDir, String timestamp,
-			String suffix, int count, boolean compress) {
-
-		ArrayList<String> fileNames = IOTools.getSequenceFiles(finalInDir,
-				suffix);
-
-		if (fileNames.isEmpty()) {
-			System.out.println("No " + suffix + " files in folder :"
-					+ finalInDir);
-		} else {
-			if (!IOTools.isDir(finalInDir + "/reports"))
-				IOTools.mkDir(finalInDir + "/reports");
-			if (!IOTools.isDir(finalInDir + "/scripts"))
-				IOTools.mkDir(finalInDir + "/scripts");
-
-			try {
-				String[] dirs = finalInDir.split("/");
-				String lastDir = dirs[dirs.length - 1];
-
-				String sbatchFileName = finalInDir + "/scripts/" + timestamp
-						+ "_" + count + "_" + lastDir + ".gunzip.sbatch";
-
-				generalSbatchScript.println("sbatch " + sbatchFileName);
-
-				ExtendedWriter EW = new ExtendedWriter(new FileWriter(
-						sbatchFileName));
-				sbatch.printSBATCHinfo(EW, finalInDir, timestamp, count, "gzip"
-						+ "_" + lastDir, time);
-
-				EW.println("cd " + finalInDir);
-				EW.println();
-				EW.println();
-
-				for (int i = 0; i < fileNames.size(); i++) {
-					if (compress)
-						EW.println("gzip  " + finalInDir + "/"
-								+ fileNames.get(i) + " &");
-					else
-						EW.println("gzip -d   " + finalInDir + "/"
-								+ fileNames.get(i) + " &");
-					if ((i + 1) % 8 == 0 && fileNames.size() - i != 1) {
-
-						EW.println();
-						EW.println();
-						EW.println("wait");
-						EW.flush();
-						EW.close();
-						count++;
-
-						sbatchFileName = finalInDir + "/scripts/" + timestamp
-								+ "_" + count + "_" + lastDir
-								+ ".gunzip.sbatch";
-						generalSbatchScript.println("sbatch " + sbatchFileName);
-						EW = new ExtendedWriter(new FileWriter(sbatchFileName));
-						sbatch.printSBATCHinfo(EW, finalInDir, timestamp,
-								count, "gzip" + "_" + lastDir, time);
-						EW.println("cd " + finalInDir);
-						EW.println();
-						EW.println();
-
-					}
-				}
-				EW.println();
-				EW.println();
-				EW.println("wait");
-				EW.flush();
-				EW.close();
-
-			} catch (Exception E) {
-				E.printStackTrace();
-			}
-
-			count++;
-		}
-		ArrayList<String> subDirs = IOTools.getDirectories(finalInDir);
-		for (int i = 0; i < subDirs.size(); i++) {
-			gunzipDir(generalSbatchScript, sbatch,
-					finalInDir + "/" + subDirs.get(i), timestamp, suffix,
-					count, compress);
-		}
-
-	}
-
-	public int gunzipDirAll(ExtendedWriter generalSbatchScript,
-			SBATCHinfo sbatch, String finalInDir, String timestamp, int count,
-			boolean compress) {
-
-		String[] dirs = finalInDir.split("/");
-		String lastDir = dirs[dirs.length - 1];
-
-		ArrayList<String> fileNames = IOTools.getSequenceFiles(finalInDir);
-
-		if (fileNames.isEmpty()) {
-			try {
-				for (int i = 0; i < fileNames.size(); i++) {
-					if (compress) {
-						if (!fileNames.get(i).endsWith(".gz")) {
-							String sbatchFileName = projectDir + "/scripts/"
-									+ timestamp + "_" + count + "_" + lastDir
-									+ ".gunzip.sbatch";
-							ExtendedWriter EW = new ExtendedWriter(
-									new FileWriter(sbatchFileName));
-							sbatch.printSBATCHinfoCore(EW, finalInDir,
-									timestamp, count, "gzip" + "_" + lastDir,
-									time);
-							generalSbatchScript.println("sbatch "
-									+ sbatchFileName);
-							EW.println("gzip  " + finalInDir + "/"
-									+ fileNames.get(i));
-							EW.flush();
-							EW.close();
-							count++;
-						}
-
-					} else if (fileNames.get(i).endsWith(".gz")) {
-						String sbatchFileName = projectDir + "/scripts/"
-								+ timestamp + "_" + count + "_" + lastDir
-								+ ".gunzip.sbatch";
-						ExtendedWriter EW = new ExtendedWriter(new FileWriter(
-								sbatchFileName));
-						sbatch.printSBATCHinfoCore(EW, finalInDir, timestamp,
-								count, "gzip" + "_" + lastDir, time);
-						generalSbatchScript.println("sbatch " + sbatchFileName);
-						EW.println("gzip -d " + finalInDir + "/"
-								+ fileNames.get(i));
-						EW.flush();
-						EW.close();
-						count++;
-					}
-				}
-			} catch (Exception E) {
-				E.printStackTrace();
-			}
-		}
-
-		ArrayList<String> subDirs = IOTools.getDirectories(finalInDir);
-		for (int i = 0; i < subDirs.size(); i++) {
-			try {
-				if (compress) {
-					String sbatchFileName = projectDir + "/scripts/"
-							+ timestamp + "_" + count + "_" + lastDir
-							+ ".gunzip.sbatch";
-					ExtendedWriter EW = new ExtendedWriter(new FileWriter(
-							sbatchFileName));
-					sbatch.printSBATCHinfoCore(EW, finalInDir, timestamp,
-							count, "gzip" + "_" + lastDir, time);
-					generalSbatchScript.println("sbatch " + sbatchFileName);
-					EW.println("gzip -r " + finalInDir + "/" + subDirs.get(i));
-					EW.flush();
-					EW.close();
-					count++;
-				} else {
-					String sbatchFileName = projectDir + "/scripts/"
-							+ timestamp + "_" + count + "_" + lastDir
-							+ ".gunzip.sbatch";
-					ExtendedWriter EW = new ExtendedWriter(new FileWriter(
-							sbatchFileName));
-					sbatch.printSBATCHinfoCore(EW, finalInDir, timestamp,
-							count, "gzip" + "_" + lastDir, time);
-					generalSbatchScript.println("sbatch " + sbatchFileName);
-					EW.println("gzip -d -r " + finalInDir + "/"
-							+ subDirs.get(i));
-					EW.flush();
-					EW.close();
-					count++;
-				}
-
-			} catch (Exception E) {
-				E.printStackTrace();
-			}
-		}
-
-		return count;
-
-	}
-
+//	public void gunzipDir(ExtendedWriter generalSbatchScript,
+//			SBATCHinfo sbatch, String finalInDir, String timestamp,
+//			String suffix, int count, boolean compress) {
+//
+//		ArrayList<String> fileNames = IOTools.getSequenceFiles(finalInDir,
+//				suffix);
+//
+//		if (fileNames.isEmpty()) {
+//			System.out.println("No " + suffix + " files in folder :"
+//					+ finalInDir);
+//		} else {
+//			if (!IOTools.isDir(finalInDir + "/reports"))
+//				IOTools.mkDir(finalInDir + "/reports");
+//			if (!IOTools.isDir(finalInDir + "/scripts"))
+//				IOTools.mkDir(finalInDir + "/scripts");
+//
+//			try {
+//				String[] dirs = finalInDir.split("/");
+//				String lastDir = dirs[dirs.length - 1];
+//
+//				String sbatchFileName = finalInDir + "/scripts/" + timestamp
+//						+ "_" + count + "_" + lastDir + ".gunzip.sbatch";
+//
+//				generalSbatchScript.println("sbatch " + sbatchFileName);
+//
+//				ExtendedWriter EW = new ExtendedWriter(new FileWriter(
+//						sbatchFileName));
+//				sbatch.printSBATCHinfo(EW, finalInDir, timestamp, lastDir, "gzip");
+//
+//				EW.println("cd " + finalInDir);
+//				EW.println();
+//				EW.println();
+//
+//				for (int i = 0; i < fileNames.size(); i++) {
+//					if (compress)
+//						EW.println("gzip  " + finalInDir + "/"
+//								+ fileNames.get(i) + " &");
+//					else
+//						EW.println("gzip -d   " + finalInDir + "/"
+//								+ fileNames.get(i) + " &");
+//					if ((i + 1) % 8 == 0 && fileNames.size() - i != 1) {
+//
+//						EW.println();
+//						EW.println();
+//						EW.println("wait");
+//						EW.flush();
+//						EW.close();
+//						count++;
+//
+//						sbatchFileName = finalInDir + "/scripts/" + timestamp
+//								+ "_" + count + "_" + lastDir
+//								+ ".gunzip.sbatch";
+//						generalSbatchScript.println("sbatch " + sbatchFileName);
+//						EW = new ExtendedWriter(new FileWriter(sbatchFileName));
+//						sbatch.printSBATCHinfo(EW, finalInDir, timestamp,
+//								count, "gzip" + "_" + lastDir, time);
+//						EW.println("cd " + finalInDir);
+//						EW.println();
+//						EW.println();
+//
+//					}
+//				}
+//				EW.println();
+//				EW.println();
+//				EW.println("wait");
+//				EW.flush();
+//				EW.close();
+//
+//			} catch (Exception E) {
+//				E.printStackTrace();
+//			}
+//
+//			count++;
+//		}
+//		ArrayList<String> subDirs = IOTools.getDirectories(finalInDir);
+//		for (int i = 0; i < subDirs.size(); i++) {
+//			gunzipDir(generalSbatchScript, sbatch,
+//					finalInDir + "/" + subDirs.get(i), timestamp, suffix,
+//					count, compress);
+//		}
+//
+//	}
+//
+//	public int gunzipDirAll(ExtendedWriter generalSbatchScript,
+//			SBATCHinfo sbatch, String finalInDir, String timestamp, int count,
+//			boolean compress) {
+//
+//		String[] dirs = finalInDir.split("/");
+//		String lastDir = dirs[dirs.length - 1];
+//
+//		ArrayList<String> fileNames = IOTools.getSequenceFiles(finalInDir);
+//
+//		if (fileNames.isEmpty()) {
+//			try {
+//				for (int i = 0; i < fileNames.size(); i++) {
+//					if (compress) {
+//						if (!fileNames.get(i).endsWith(".gz")) {
+//							String sbatchFileName = projectDir + "/scripts/"
+//									+ timestamp + "_" + count + "_" + lastDir
+//									+ ".gunzip.sbatch";
+//							ExtendedWriter EW = new ExtendedWriter(
+//									new FileWriter(sbatchFileName));
+//							sbatch.printSBATCHinfoCore(EW, finalInDir,
+//									timestamp, count, "gzip" + "_" + lastDir,
+//									time);
+//							generalSbatchScript.println("sbatch "
+//									+ sbatchFileName);
+//							EW.println("gzip  " + finalInDir + "/"
+//									+ fileNames.get(i));
+//							EW.flush();
+//							EW.close();
+//							count++;
+//						}
+//
+//					} else if (fileNames.get(i).endsWith(".gz")) {
+//						String sbatchFileName = projectDir + "/scripts/"
+//								+ timestamp + "_" + count + "_" + lastDir
+//								+ ".gunzip.sbatch";
+//						ExtendedWriter EW = new ExtendedWriter(new FileWriter(
+//								sbatchFileName));
+//						sbatch.printSBATCHinfoCore(EW, finalInDir, timestamp,
+//								count, "gzip" + "_" + lastDir, time);
+//						generalSbatchScript.println("sbatch " + sbatchFileName);
+//						EW.println("gzip -d " + finalInDir + "/"
+//								+ fileNames.get(i));
+//						EW.flush();
+//						EW.close();
+//						count++;
+//					}
+//				}
+//			} catch (Exception E) {
+//				E.printStackTrace();
+//			}
+//		}
+//
+//		ArrayList<String> subDirs = IOTools.getDirectories(finalInDir);
+//		for (int i = 0; i < subDirs.size(); i++) {
+//			try {
+//				if (compress) {
+//					String sbatchFileName = projectDir + "/scripts/"
+//							+ timestamp + "_" + count + "_" + lastDir
+//							+ ".gunzip.sbatch";
+//					ExtendedWriter EW = new ExtendedWriter(new FileWriter(
+//							sbatchFileName));
+//					sbatch.printSBATCHinfoCore(EW, finalInDir, timestamp,
+//							count, "gzip" + "_" + lastDir, time);
+//					generalSbatchScript.println("sbatch " + sbatchFileName);
+//					EW.println("gzip -r " + finalInDir + "/" + subDirs.get(i));
+//					EW.flush();
+//					EW.close();
+//					count++;
+//				} else {
+//					String sbatchFileName = projectDir + "/scripts/"
+//							+ timestamp + "_" + count + "_" + lastDir
+//							+ ".gunzip.sbatch";
+//					ExtendedWriter EW = new ExtendedWriter(new FileWriter(
+//							sbatchFileName));
+//					sbatch.printSBATCHinfoCore(EW, finalInDir, timestamp,
+//							count, "gzip" + "_" + lastDir, time);
+//					generalSbatchScript.println("sbatch " + sbatchFileName);
+//					EW.println("gzip -d -r " + finalInDir + "/"
+//							+ subDirs.get(i));
+//					EW.flush();
+//					EW.close();
+//					count++;
+//				}
+//
+//			} catch (Exception E) {
+//				E.printStackTrace();
+//			}
+//		}
+//
+//		return count;
+//
+//	}
+//
 }

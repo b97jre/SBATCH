@@ -92,7 +92,6 @@ public class WriteTocutAdaptoSBATCH {
 			if (T.containsKey("-b")) {
 				String allAdaptersFile = Functions.getValue(T, "-b", ".");
 				otherAdapters = getAdapters(allAdaptersFile);
-
 			}
 		} else {
 			System.out
@@ -143,7 +142,14 @@ public class WriteTocutAdaptoSBATCH {
 			E.printStackTrace();
 		}
 	}
+	
+	
+	
+	
+	
 
+	
+	
 	public void cutAdaptSample(SBATCHinfo sbatch,
 			ExtendedWriter generalSbatchScript, String inDir,
 			String cutadaptDir, String QCDir, String SeqPrepDir) {
@@ -177,8 +183,9 @@ public class WriteTocutAdaptoSBATCH {
 					ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 							sbatchFile));
 					String[] split = SeqPrepDir.split("/");
-					sbatch.printSBATCHinfoCore(EW, cutadaptDir, timeStamp, 0, i
-							+ "_cutadapt_" + split[split.length - 1], time);
+					
+					sbatch.printSBATCHinfo(EW, cutadaptDir, timeStamp, 0, i
+							+ "_cutadapt_" + split[split.length - 1]);
 
 					if (cutadapt) {
 						// cutAdapt step
@@ -289,7 +296,8 @@ public class WriteTocutAdaptoSBATCH {
 				+ length
 				+ " -f1 "
 				+ forward
-				+ " -f2 " + reverse);
+				+ " -f2 " 
+				+ reverse);
 		EW.println();
 		EW.println("Removing short reads DONE");
 		EW.println("#############################################################################################################");

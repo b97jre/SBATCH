@@ -142,7 +142,7 @@ public class DigiNorm {
 				ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 						sbatchFileName));
 				sbatch.printSBATCHinfo(EW, outDir, timestamp, count2,
-						"DigiNorm_" + count2, time);
+						"DigiNorm");
 				EW.println("cd " + inDir);
 				EW.println("PYTHONPATH=~/bin/screed/dist/screed-0.7-py2.6.egg:~/bin/khmer/python ");
 				EW.println("export PYTHONPATH");

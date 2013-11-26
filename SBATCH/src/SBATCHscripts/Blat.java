@@ -48,8 +48,7 @@ public class Blat {
 			this.time = "7:00:00";
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 					sbatchFileName));
-			sbatch.printSBATCHinfoCore(EW, outDir, timestamp, count, "blat",
-					time);
+			sbatch.printSBATCHinfo(EW, outDir, timestamp, count, "blat");
 			EW.println("module load bioinfo-tools");
 			EW.println("module load blat/34");
 

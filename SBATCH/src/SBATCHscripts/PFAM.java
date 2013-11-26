@@ -17,6 +17,15 @@ public class PFAM {
 	public PFAM() {
 	}
 
+
+	public static void help(){
+		System.out.println("");
+		System.out.println("PFAM specific flags");
+		System.out.println(Functions.fixedLength("-split <nrOfSequencesPerRun>",30)+"will split up file for parralel runs");
+		System.out.println("");
+	}
+
+	
 	public static void run(Hashtable<String, String> T,
 			ExtendedWriter generalSbatchScript, SBATCHinfo sbatch,
 			String timestamp, String inDir, String outDir, String fileName,
@@ -30,7 +39,6 @@ public class PFAM {
 				runPfamFile(T, generalSbatchScript, sbatch, timestamp, inDir,
 						outDir, fileNames.get(i));
 			}
-
 			try {
 				ExtendedWriter EW = new ExtendedWriter(new FileWriter(outDir
 						+ "/scripts/" + timestamp + "_" + fileName
@@ -70,8 +78,7 @@ public class PFAM {
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 					sbatchFileName));
 
-			sbatch.printSBATCHinfoCore(EW, outDir, timestamp, "pfam", fileName
-					+ ".pfam");
+			sbatch.printSBATCHinfo(EW, outDir, timestamp,fileName, "pfam");
 
 			EW.println("# loading prerequistit modules at uppmax");
 			EW.println("module load bioinfo-tools");
@@ -131,7 +138,7 @@ public class PFAM {
 	}
 
 	public static String PfamCommand(String fasta_file, String pfamDB,
-			 Hashtable<String, String> T) {
+			Hashtable<String, String> T) {
 
 		// more information can be added right now only default works
 
