@@ -142,6 +142,10 @@ public class Merge {
 					PFAM.merge(fileNames, inDir,
 							IOTools.longestCommonPrefix(fileNames)
 									+ "merged.pfam");
+				if (T.containsKey("-GATK") || T.containsKey("-GATK"))
+					PFAM.merge(fileNames, inDir,
+							IOTools.removeLastDot(IOTools.longestCommonPrefix(fileNames))
+									+ "."+IOTools.removeFirsttDot(suffix));
 			} catch (Exception E) {
 				E.printStackTrace();
 			}

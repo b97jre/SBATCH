@@ -153,15 +153,23 @@ public class Picard {
 		EW.println("cd " + outDir);
 		for (int i = 0; i < fileNames.size(); i++) {
 			System.out.println(fileNames.get(i));
+			
 			String bamFile = fileNames.get(i);
-			String[] info = bamFile.split("_");
+			String[] info = bamFile.split("_"+Nucleotide+"_");
 			String Name, Barcode, Lane;
-			Name = Nucleotide = Barcode = Lane = null;
-			if (info.length > 3) {
+			Name  = Barcode = Lane = null;
+			if (info.length ==2) {
 				Name = info[0];
-				Nucleotide = info[1];
-				Barcode = info[2];
-				Lane = info[3];
+				info = info[1].split("_");
+				if (info.length >= 2) {
+					Barcode = info[0];
+					Lane = info[1];
+				}
+				else{
+					Barcode = "unknown";
+					Lane = "unknown";
+				}
+					
 			}
 
 			// "Inter3-1_DNA_ATCACG_L005_R1_001fastq_Crubella_183.strict.sam"
@@ -175,7 +183,7 @@ public class Picard {
 			bamFile = AddOrReplaceReadGroups(EW, bamFile, memory, picardDir,
 					"bam", RGID, RGLB, RGPL, RGPU, RGSM, "coordinate")
 					+ "."
-					+ suffix;
+					+ "bam";
 			fileNames.set(i, bamFile);
 
 		}
@@ -198,12 +206,10 @@ public class Picard {
 
 		EW.println("# Marking duplicates duplicates " + bamFile);
 
-		bamFile = markDuplicates(EW, bamFile, memory, picardDir, suffix);
+		bamFile = markDuplicates(EW, bamFile, memory, picardDir, "bam");
 
 		EW.println();
 		EW.println();
-		EW.println("wait");
-
 		return bamFile;
 
 	}

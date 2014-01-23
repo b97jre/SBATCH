@@ -209,7 +209,7 @@ public class WriteTocutAdaptoSBATCH {
 								pairs.get(i)[0], pairs.get(i)[1],
 								pairs.get(i)[2]);
 					}
-					FastQCSBATCH FQC = new FastQCSBATCH();
+					FastQC FQC = new FastQC();
 					// FastQCstep
 					FQC.FastQCSample(EW, inDir, pairs.get(i)[0]);
 					FQC.FastQCSample(EW, inDir, pairs.get(i)[1]);

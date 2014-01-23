@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Hashtable;
 
-public class FastQCSBATCH {
+public class FastQC {
 
 	String inDir;
 	String outDir;
@@ -22,7 +22,7 @@ public class FastQCSBATCH {
 	String projectDir;
 	boolean dependencies;
 
-	public FastQCSBATCH() {
+	public FastQC() {
 		projectDir = time = inDir = outDir = null;
 		dependencies = false;
 	}

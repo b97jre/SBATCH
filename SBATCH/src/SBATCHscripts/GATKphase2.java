@@ -26,58 +26,140 @@ public class GATKphase2 {
 	String projectDir;
 	String suffix;
 	String prefix;
-	String picardDir;
 	String GATKdir;
 	String knownSNPVCF;
 	String knownIndelVCF;
-	String targetIntervals;
-	String nucleicAcid;
 
-	int memory;
 	int cutoff;
 	int padding;
 	String job;
+	
+	String directory;
 
 	boolean PRIORITIZE;
 	boolean HaploTypeCaller;
+	
 	boolean rerun;
+	boolean merge;
 	String Reference;
 
 	
 	
-		public void help(){
-
-			System.out.println("Mandatory values for paired sequences:");
-			System.out.println(Functions.fixedLength("-i <dir>", 30)+"inDirectory or inFile (-i fastqDir)");
-			System.out.println("or");
-			System.out.println(Functions.fixedLength("-f1 <file1>", 30)+"First file (-i file.1.fastq)");
-			System.out.println(Functions.fixedLength("-f2 <file2>", 30)+"First file (-i file.2.fastq)");
-
-			System.out.println("Mandatory values if working on directory:");
-			System.out.println(Functions.fixedLength("-suffix <yourSuffix>", 30)+" suffix of files (-suffix fastq)");
-			System.out.println(Functions.fixedLength("-sep <sep1> <sep2>", 30)+" program assumens pair of files have name unique<sep[1|2]><suffix> (-sep 1 2)");
-			System.out.println(Functions.fixedLength("", 30)+"e.g  file.1.fastq file.2.fastq");
+	public void help(){
 
 
-			for (Programs info : EnumSet.allOf(Programs.class)) {
-				System.out.println(info);
-			}
 
-			System.out.println();
+		System.out.println("Mandatory values for GATK phase2:");
+		System.out.println(Functions.fixedLength("-i <inDirectory> ", 50)+"Directory where all files with suffix under will be used for one vcf file");
+		System.out.println(Functions.fixedLength("-R <ReferenceFile.fa>", 50)+"Reference fasta file");
+		System.out.println(Functions.fixedLength("-T <UnifiedGenotyper|HaplotypeCaller>", 50)+"Which program to use. Has to be either UnifiedGenotyper or HaplotypeCaller see GATK for more info");
+		System.out.println(Functions.fixedLength("-suffix", 50)+"End of bamfiles that you will process");
+		System.out.println(Functions.fixedLength("-prefix", 50)+"Prefix of vcf files when merging many files ONLY mandatory when -merge flag is called");
+		System.out.println();
 
+		
+		
+		System.out.println("Optional values:");
+		
+		System.out.println(Functions.fixedLength("-knownSNPs <KnownSNP.vcf>", 50)+"Vcf file with known SNPs");
+		System.out.println(Functions.fixedLength("-knownIndels <KnownIndels.vcf>", 50)+"Vcf file with known indels");
+		System.out.println(Functions.fixedLength("-targetIntervals <targetIndelsFile>", 50)+"targetIntervals file in format according to GATK");
+		System.out.println(Functions.fixedLength("-split <size>", 50)+"Split up reference so that they can be runned in parrallel.");
+		System.out.println(Functions.fixedLength("", 50)+"Recomended size is 100 000 where each run takes less than an hour.");
+		System.out.println(Functions.fixedLength("", 50)+"Default is -1,i.e. it is not split up");
+		System.out.println();
+		System.out.println(Functions.fixedLength("-padding <size>", 50)+"If split then this is the extra nucleotides added on each side when doing the comparision. Default is 100");
+		System.out.println(Functions.fixedLength("-merge", 50)+"post processing after the files have been split into different bins ");
+			
+		System.out.println();
+		System.out.println();
+
+	}
+
+	public boolean addParameters(Hashtable<String, String> T) {
+
+		boolean allPresent = true;
+		GATKdir = Functions.getValue(T, "-GATKDir",
+				"/sw/apps/bioinfo/GATK/2.5.2/");
+		this.suffix = Functions.getValue(T,"-suffix");
+		if (suffix.indexOf('.') == 0)
+			suffix = suffix.substring(1);
+
+		
+		
+		this.directory = Functions.getValue(T, "-i");
+		File ref = new File(this.directory);
+		this.directory = ref.getAbsolutePath();
+		
+		this.Reference = Functions.getValue(T, "-R");
+		ref = new File(this.Reference);
+		this.Reference = ref.getAbsolutePath();
+		
+		knownSNPVCF = Functions.getValue(T, "-knownSNPs");
+		if(knownSNPVCF != null){
+			ref = new File(this.knownSNPVCF);
+			knownSNPVCF = ref.getAbsolutePath();
+		}
+		knownIndelVCF = Functions.getValue(T, "-knownIndels", null);
+		if (IOTools.fileExists(IOTools.getCurrentPath() + "/" + knownIndelVCF))
+			knownIndelVCF = IOTools.getCurrentPath() + "/" + knownIndelVCF;
+		
+		String caller = Functions.getValue(T, "-T");
+		if(caller != null && caller.toUpperCase().compareTo("HaplotypeCaller".toUpperCase()) == 0)this.HaploTypeCaller = true;
+		else this.HaploTypeCaller = false;
+				
+		
+		if(T.containsKey("-merge")) this.merge = true;
+		prefix = Functions.getValue(T, "-prefix");
+		cutoff = Functions.getInt(T, "-split",- 1);
+		padding = Functions.getInt(T, "-padding",100);
+
+		return true;
+	}
+		
+	public boolean checkParameters(Hashtable<String, String> T) {
+		boolean allPresent = true;
+
+		GATKdir = Functions.getValue(T, "-GATKDir",
+				"/bubo/sw/apps/bioinfo/GATK/2.5.2/");
+		if(!T.containsKey("-merge")){
+			if (!T.containsKey("-i")){System.out.println("-i is missing" ); allPresent = false;}
+			if (!T.containsKey("-R")){System.out.println("-R is missing" ); allPresent = false;}
+			if(!T.containsKey("-suffix")){System.out.println("-suffix is missing" ); allPresent = false;}		
+			if(!T.containsKey("-T")){System.out.println("-T is missing" ); allPresent = false;}
+		}
+		else{
+			if (!T.containsKey("-i")){System.out.println("-i is missing" ); allPresent = false;}
+			if (!T.containsKey("-R")){System.out.println("-R is missing" ); allPresent = false;}
+			if(!T.containsKey("-suffix")){System.out.println("-suffix is missing" ); allPresent = false;}		
+			if(!T.containsKey("-prefix")){System.out.println("-prefix is missing" ); allPresent = false;}		
+			if(!T.containsKey("-split")){System.out.println("-cutoff is missing" ); allPresent = false;}		
 		}
 		
+		
+		if(allPresent) return true;
+		
+		help();
+		return false;
+	}
+
 		
 	
 	
 	
 	public GATKphase2() {
 		projectDir = time = null;
+		merge = false;
 	}
 
 
 
 
+
+	
+	
+	
+	
 	public ArrayList<String> getFilesWithSuffix(String dir) {
 		ArrayList<String> fileNames = new ArrayList<String>();
 		ArrayList<String> subDirs = IOTools.getDirectories(dir);
@@ -98,9 +180,8 @@ public class GATKphase2 {
 	}
 
 
-	public void GATKMerge2(ExtendedWriter MasterShellScriptFile,
-			SBATCHinfo sbatch, String timestamp, String outDir,
-			Hashtable<String, String> T) {
+	public void GATKMerge2() {
+		String outDir = this.directory;
 
 		/*
 		 * for each sample (asumed to be in same dir)
@@ -116,8 +197,6 @@ public class GATKphase2 {
 		if (!IOTools.isDir(outDir + "/scripts"))
 			IOTools.mkDir(outDir + "/scripts");
 		try {
-			String prefix = Functions.getValue(T, "-prefix");
-			String suffix = Functions.getValue(T, "-suffix");
 
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(outDir + "/"
 					+ prefix + ".Final.vcf"));
@@ -130,8 +209,6 @@ public class GATKphase2 {
 
 			ArrayList<Integer> lengths = FastaSequences.getLengths(Reference);
 			ArrayList<String> names = FastaSequences.getNames(Reference);
-			System.out.println();
-			System.out.println();
 			int count = 0;
 			int pointer = 0;
 			while (cutoff != -1 && pointer < names.size()) {
@@ -214,14 +291,14 @@ public class GATKphase2 {
 		}
 	}
 
-	public void printSBATCHscript(ExtendedWriter MasterShellScriptFile,
+	public void printSBATCHscript(ExtendedWriter masterShellScript, 
 	SBATCHinfo sbatch, String outDir,String commandLine, String outFile, String function) {
 		try {
 			String sbatchFileName = outDir + "/scripts/" + sbatch.getTimeStamp() + "_"
 			+ outFile + "_" + function + ".sbatch";
 
-			MasterShellScriptFile.println("sbatch " + sbatchFileName);
-
+			
+			masterShellScript.println("sbatch "+sbatchFileName);
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(sbatchFileName));
 			sbatch.printSBATCHinfo(EW, outDir, sbatch.getTimeStamp(), outFile, function);
 			EW.println();
@@ -246,10 +323,12 @@ public class GATKphase2 {
 
 	
 
-	public void GATKPhase2(ExtendedWriter MasterShellScriptFile,
-			SBATCHinfo sbatch, String timestamp, String outDir,
-			Hashtable<String, String> T) {
+	public void GATKPhase2(SBATCHinfo sbatch) {
 
+		if(this.merge){
+			GATKMerge2();
+			return;
+		}
 		/*
 		 * for each sample (asumed to be in same dir)
 		 * 
@@ -259,11 +338,18 @@ public class GATKphase2 {
 		 * sample.bam <- recal.bam
 		 */
 
+		
+		
+		String outDir = this.directory;
+		
 		if (!IOTools.isDir(outDir + "/reports"))
 			IOTools.mkDir(outDir + "/reports");
 		if (!IOTools.isDir(outDir + "/scripts"))
 			IOTools.mkDir(outDir + "/scripts");
 		try {
+			
+			ExtendedWriter superShellScript = sbatch.printShellInfoSTART("GATK_phase2",outDir);
+			
 			ArrayList<Integer> lengths = FastaSequences.getLengths(Reference);
 			ArrayList<String> names = FastaSequences.getNames(Reference);
 			ArrayList<String> fileNames = getFilesWithSuffix(outDir);
@@ -292,13 +378,13 @@ public class GATKphase2 {
 						if (!HaploTypeCaller) {
 							outFile = "Unified.output.raw.snps.indels.part"
 									+ count + ".vcf";
-							commandLine = UnifiedGenotypeCaller(memory,
+							commandLine = UnifiedGenotypeCaller(sbatch.getMemoryPadded(),
 									GATKdir, fileNames, Reference, outFile
 											+ ".temp", knownSNPVCF, SubNames);
 						} else {
 							outFile = "Haplotype.output.raw.snps.indels.part"
 									+ count + ".vcf";
-							commandLine = HaplotypeCaller(memory, GATKdir,
+							commandLine = HaplotypeCaller(sbatch.getMemoryPadded(), GATKdir,
 									fileNames, Reference, outFile + ".temp",
 									knownSNPVCF, SubNames);
 
@@ -307,7 +393,7 @@ public class GATKphase2 {
 								|| !IOTools.fileExists(outDir
 										+ "/output.raw.snps.indels.part"
 										+ count + ".vcf.idx"))
-							printSBATCHscript(MasterShellScriptFile, sbatch,
+							printSBATCHscript(superShellScript,sbatch,
 									 outDir, commandLine, 
 									outFile, "GATK_phase2");
 						start = stop - 2 * padding;
@@ -325,19 +411,19 @@ public class GATKphase2 {
 					if (!HaploTypeCaller) {
 						outFile = "Unified.output.raw.snps.indels.part" + count
 								+ ".vcf";
-						commandLine = UnifiedGenotypeCaller(memory, GATKdir,
+						commandLine = UnifiedGenotypeCaller(sbatch.getMemoryPadded(), GATKdir,
 								fileNames, Reference, outFile + ".temp",
 								knownSNPVCF, SubNames);
 					} else {
 						outFile = "Haplotype.output.raw.snps.indels.part"
 								+ count + ".vcf";
-						commandLine = HaplotypeCaller(memory, GATKdir,
+						commandLine = HaplotypeCaller(sbatch.getMemoryPadded(), GATKdir,
 								fileNames, Reference, outFile + ".temp",
 								knownSNPVCF, SubNames);
 
 					}
 					if (!rerun || !IOTools.fileExists(outDir + "/" + outFile))
-						printSBATCHscript(MasterShellScriptFile, sbatch,
+						printSBATCHscript(superShellScript, sbatch,
 								 outDir, commandLine, 
 								outFile, "GATK_phase2");
 					count++;
@@ -357,13 +443,13 @@ public class GATKphase2 {
 					if (!HaploTypeCaller) {
 						outFile = "Unified.output.raw.snps.indels.part" + count
 								+ ".vcf";
-						commandLine = UnifiedGenotypeCaller(memory, GATKdir,
+						commandLine = UnifiedGenotypeCaller(sbatch.getMemoryPadded(), GATKdir,
 								fileNames, Reference, outFile + ".temp",
 								knownSNPVCF, SubNames);
 					} else {
 						outFile = "Haplotype.output.raw.snps.indels.part"
 								+ count + ".vcf";
-						commandLine = HaplotypeCaller(memory, GATKdir,
+						commandLine = HaplotypeCaller(sbatch.getMemoryPadded(), GATKdir,
 								fileNames, Reference, outFile + ".temp",
 								knownSNPVCF, SubNames);
 
@@ -372,7 +458,7 @@ public class GATKphase2 {
 							|| !IOTools.fileExists(outDir
 									+ "/output.raw.snps.indels.part" + count
 									+ ".vcf.idx"))
-						printSBATCHscript(MasterShellScriptFile, sbatch,
+						printSBATCHscript(superShellScript, sbatch,
 								 outDir, commandLine, 
 								outFile, "GATK_phase2");
 					count++;
@@ -381,17 +467,17 @@ public class GATKphase2 {
 			}
 
 			if (cutoff == -1) {
-				String sbatchFileName = outDir + "/scripts/" + timestamp + "_"
+				String sbatchFileName = outDir + "/scripts/" + sbatch.getTimeStamp() + "_"
 						+ count + "phase2_GATK.sbatch";
 				System.out.println("sbatch " + sbatchFileName);
 				ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 						sbatchFileName));
-				sbatch.printSBATCHinfo(EW, outDir, timestamp, 0, "GATK_phase2");
+				sbatch.printSBATCHinfo(EW, outDir, sbatch.getTimeStamp(), 0, "GATK_phase2");
 
 				EW.println("cd " + outDir);
 
 				if (HaploTypeCaller) {
-					String commandLine = HaplotypeCaller(memory, GATKdir,
+					String commandLine = HaplotypeCaller(sbatch.getMemoryPadded(), GATKdir,
 							fileNames, Reference, "output.raw.snps.indels.vcf",
 							knownSNPVCF, null);
 					System.out.println(commandLine);
@@ -403,12 +489,12 @@ public class GATKphase2 {
 				}
 				EW.println();
 				EW.println();
-				EW.println("wait");
 
 				EW.flush();
 				EW.close();
 
 			}
+			sbatch.printShellInfoSTOP(superShellScript,"GATK_phase2",outDir);
 
 		} catch (Exception E) {
 			E.printStackTrace();
@@ -562,7 +648,7 @@ public class GATKphase2 {
 				+ " "
 				+ "-o "
 				+ bamFile
-				+ "Genotype.vcf "
+				+ ".Genotype.vcf "
 				+ "-alleles  "
 				+ knownSNPVCF
 				+ " "

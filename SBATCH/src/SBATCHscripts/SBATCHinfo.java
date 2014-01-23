@@ -1,6 +1,10 @@
 package SBATCHscripts;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileWriter;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Hashtable;
 
@@ -13,14 +17,15 @@ public class SBATCHinfo {
 	private String projectNumber;
 	private String email;
 	private String[] module;
+	private int[] afterany;
 	private String time;
-	private int node;
-	private boolean core;
+	private int core;
 	private int memory;
 	public String timeStamp;
 
 	public boolean interactive; 
 	boolean milou;
+	boolean kalkyl;
 
 
 
@@ -76,6 +81,7 @@ public class SBATCHinfo {
 		PANTHER,
 		PFAM,
 		TRIMFASTQFILES,
+		ONELINE,
 		HELP
 	}
 
@@ -84,7 +90,7 @@ public class SBATCHinfo {
 
 
 	public SBATCHinfo() {
-		
+
 	}
 
 
@@ -99,16 +105,8 @@ public class SBATCHinfo {
 			}
 		}
 
-
-		if(T.containsKey("-node")){
-			core =false;
-			node = Functions.getInt(T, "-node", 8);
-			memory = Functions.getInt(T,"-memory", 24);
-		}else 
-			core =true;
-		memory = Functions.getInt(T,"-memory", 24);
-	
-		
+		core = Functions.getInt(T,"-core", 1);
+		memory = Functions.getInt(T,"-memory",8);
 		milou = true;
 		projectNumber = Functions.getValue(T, "-pNr", "b2010035");
 		email = Functions.getValue(T, "-email", "johan.reimegard@scilifelab.se");
@@ -128,7 +126,23 @@ public class SBATCHinfo {
 			}
 		}
 
+		if (T.containsKey("-afterany")) {
+			String modules = Functions.getValue(T, "-afterany");
+			if (modules.indexOf(" ") > -1){
+				String[] temp = modules.split(" ");
+				this.afterany = new int[temp.length];
+				for(int i = 0; i< afterany.length; i++){
+					afterany[i] = Integer.parseInt(temp[i]);
+				}
+			}else {
+				afterany = new int[1];
+				afterany[0] = Integer.parseInt(modules);
+			}
+		}
+	
+		
 		String programName = Functions.getValue(T, "-program",Functions.getValue(T, "-p","help"));
+		System.out.println("programName");
 		Programs program = Programs.valueOf(programName.toUpperCase());
 
 		switch (program) {
@@ -148,8 +162,26 @@ public class SBATCHinfo {
 					if(general.addParameters(T,this))
 						general.generalStart(T, this);
 				}
+				else if(gatk.phase2){	
+					GATKphase2 phase2 = new GATKphase2();
+					if(phase2.checkParameters(T)){
+						phase2.addParameters(T);
+						phase2.GATKPhase2(this);
+					}
+				}
+				else if(gatk.phase){	
+					GATKphaseSNPs phaseSNPs = new GATKphaseSNPs();
+					if(phaseSNPs.checkParameters(T)){
+						phaseSNPs.addParameters(T);
+						phaseSNPs.GATKPhaseSNPs(this);
+					}
+				}
+				else if(gatk.genotype){	
+					GeneralOneFile genotypeSample = new GeneralOneFile();
+					genotypeSample.run(T,this);
+				}
 			}
-			
+
 			break;
 		case BWA:
 			BWA bwa = new BWA();
@@ -168,7 +200,7 @@ public class SBATCHinfo {
 			deNovoExtension.run(T);
 			break;
 		case FASTQC:
-			FastQCSBATCH FastQC = new FastQCSBATCH();
+			FastQC FastQC = new FastQC();
 			FastQC.run(T);
 			break;
 		case FILTER:
@@ -267,12 +299,179 @@ public class SBATCHinfo {
 				trimFastqFiles.run(T,this);
 			}
 			break;
+		case ONELINE:
+			System.out.println("One line it is");
+			if(T.containsKey("-i")){
+				oneLine(T);
+			}
+			break;
 		default: help();	
 
 		}			
 		return true;
 
 	}
+
+
+	public void oneLine(Hashtable<String, String> T){
+		String oneLine  = T.get("-i");
+		System.out.println("The line to be ran is :");
+		System.out.println(oneLine);
+		
+		ExtendedWriter EW = printSBATCHInfoSTART("oneLine");
+		EW.println();
+		EW.println();
+		if(T.containsKey("-o")){
+			String out = T.get("-o");
+			EW.println(oneLine +"> tmp."+out);
+			EW.println("mv tmp."+out+" "+out);
+
+		}else
+			EW.println(oneLine);
+		EW.println();
+		EW.println();
+		EW.flush();
+		EW.close();
+		try {
+			String line;
+			Process p = Runtime.getRuntime().exec("sbatch "+getSbatchFileName("oneLine"));
+			BufferedReader in = new BufferedReader(
+					new InputStreamReader(p.getInputStream()) );
+			while ((line = in.readLine()) != null) {
+				System.out.println(line);
+			}
+			in.close();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+
+
+	}
+	public String getSbatchFileName(String program) {
+		String cDir = IOTools.getCurrentPath();
+		String sbatchFile = cDir + "/scripts/" +program 
+				+ "_" +new File(cDir).getName()+ "_"+timeStamp +".sbatch";
+		return sbatchFile;
+
+	}
+
+	public ExtendedWriter printSBATCHInfoSTART(String program) {
+		try {
+			String cDir = IOTools.getCurrentPath();
+			if (!IOTools.isDir(cDir + "/reports"))
+				IOTools.mkDir(cDir + "/reports");
+			if (!IOTools.isDir(cDir + "/scripts"))
+				IOTools.mkDir(cDir + "/scripts");
+			String sbatchFile = cDir + "/scripts/" +program 
+					+ "_" +new File(cDir).getName()+ "_"+timeStamp +".sbatch";			
+			ExtendedWriter EW = ExtendedWriter.getFileWriter(sbatchFile);
+			this.printSBATCHinfo(EW, cDir, timeStamp, 0, program);
+			
+			EW.println("cd "+cDir);
+			return EW;
+		}
+		catch(Exception E){
+			E.printStackTrace();
+		}
+		return null;
+	}
+
+
+	public ExtendedWriter printShellInfoSTART(String program) {
+		try {
+			String cDir = IOTools.getCurrentPath();
+			if (!IOTools.isDir(cDir + "/reports"))
+				IOTools.mkDir(cDir + "/reports");
+			if (!IOTools.isDir(cDir + "/scripts"))
+				IOTools.mkDir(cDir + "/scripts");
+			String sbatchFile = cDir + "/scripts/" + timeStamp
+					+ "_" +new File(cDir).getName()+ "_"+ program+".sh";
+			ExtendedWriter EW = ExtendedWriter.getFileWriter(sbatchFile);
+			return EW;
+		}
+		catch(Exception E){
+			E.printStackTrace();
+		}
+		return null;
+	}
+
+
+
+
+	public ExtendedWriter printShellInfoSTART(String program, String inDir ) {
+		try {
+			String cDir = IOTools.getCurrentPath();
+			if (!IOTools.isDir(cDir + "/reports"))
+				IOTools.mkDir(cDir + "/reports");
+			if (!IOTools.isDir(cDir + "/scripts"))
+				IOTools.mkDir(cDir + "/scripts");
+			String sbatchFile = cDir + "/scripts/" + timeStamp
+					+ "_" +new File(inDir).getName()+ "_"+ program+".sh";
+			ExtendedWriter EW = ExtendedWriter.getFileWriter(sbatchFile);
+			return EW;
+		}
+		catch(Exception E){
+			E.printStackTrace();
+		}
+		return null;
+	}
+
+	public String getSbatchFileName(String program, String inDir, int count ) {
+		return inDir + "/scripts/" + timeStamp
+				+ "_" +new File(inDir).getName()+ "_"+ program+"_"+count+".sbatch";
+	}
+
+
+	public ExtendedWriter printSBATCHInfoSTART(String program, String inDir, int count ) {
+		try {
+			if (!IOTools.isDir(inDir + "/reports"))
+				IOTools.mkDir(inDir + "/reports");
+			if (!IOTools.isDir(inDir + "/scripts"))
+				IOTools.mkDir(inDir + "/scripts");
+			String sbatchFile = getSbatchFileName(program,inDir,count);
+			ExtendedWriter EW = ExtendedWriter.getFileWriter(sbatchFile);
+
+			printSBATCHinfo(EW, inDir, getTimeStamp(), count, program);
+
+			return EW;
+		}
+		catch(Exception E){
+			E.printStackTrace();
+		}
+		return null;
+	}
+
+	public void printShellInfoSTOP(ExtendedWriter EW, String program, String inDir ) {
+		try {
+			EW.flush();
+			EW.close();
+
+			String cDir = IOTools.getCurrentPath();
+			String sbatchFile = cDir + "/scripts/" + timeStamp
+					+ "_" +new File(inDir).getName()+ "_"+ program+".sh";
+
+			System.out.println("All things seems to have run properly!");
+			System.out.println("To start all the scripts write  :");
+			System.out.println("sh "+sbatchFile);
+		}
+		catch(Exception E){
+			E.printStackTrace();
+		}
+	}
+
+	public void mvTempFiles(ExtendedWriter EW, String dir, ArrayList<String> temp, ArrayList<String> finalFile){
+		for(int i = 0; i < temp.size();i++){
+			EW.println("mv "+dir+"/"+temp.get(i)+" "+dir+"/"+finalFile.get(i));
+		}
+	}
+
+	public void mvTempFiles(ExtendedWriter EW,  ArrayList<String> temp, ArrayList<String> finalFile){
+		for(int i = 0; i < temp.size();i++){
+			EW.println("mv "+temp.get(i)+" "+finalFile.get(i));
+		}
+	}
+
 
 
 	public void help(){
@@ -284,12 +483,13 @@ public class SBATCHinfo {
 		System.out.println(Functions.fixedLength("-program <program>",30)+"Available programs are listed below.(-program blast)");
 		System.out.println("");
 		System.out.println("Other flags for SBATCHinfo:");
-		System.out.println(Functions.fixedLength("-core", 30)+" This is default, i.e. one core 3 GB RAM. (-core)");
-		System.out.println(Functions.fixedLength("-node <numberOfCores>", 30)+" Number of cores. Default is 8, i.e one node. (-node 8)");
-		System.out.println(Functions.fixedLength("-memory <NrOfGB>", 30)+" Memory of nodes. Default is 3, i.e a core. (-memory 24)");
-		System.out.println(Functions.fixedLength("-milou", 30)+" If you want to run on the milou cluster. (-memory 24)");
+		System.out.println(Functions.fixedLength("-core <numberOfCores>", 30)+" Default is one core, i.e. 8 GB RAM.");
+		System.out.println(Functions.fixedLength("-memory <NrOfGB>", 30)+" Allocated memory . Default is 8, i.e a core. (-memory 24)");
+		System.out.println(Functions.fixedLength("-milou", 30)+" Run on the milou cluster (Default");
+		System.out.println(Functions.fixedLength("-kalkyl", 30)+" Run on the kalkyl cluster");
+
 		System.out.println("");
-		
+
 
 		for (Programs info : EnumSet.allOf(Programs.class)) {
 			System.out.println(info);
@@ -313,22 +513,8 @@ public class SBATCHinfo {
 			}
 		}
 
-		if(T.containsKey("-core")){
-			core =true;
-			memory = Functions.getInt(T,"-memory", 8);
-			
-			
-		}
-		else if(T.containsKey("-node")){
-			core =false;
-			node = Functions.getInt(T, "-node", 16);
-			memory = Functions.getInt(T,"-memory", 128);
-		}else{ 
-			core =true;
-			memory = Functions.getInt(T,"-memory", 8);
-		}
-
-		
+		core = Functions.getInt(T,"-core", 1);
+		memory = Functions.getInt(T,"-memory", 8);
 		projectNumber = Functions.getValue(T, "-pNr", "b2010035");
 		email = Functions.getValue(T, "-email", "johan.reimegard@scilifelab.se");
 		time = Functions.getValue(T, "-time");
@@ -349,37 +535,39 @@ public class SBATCHinfo {
 
 	}
 
-	
+
 	public void printSBATCHinfo(ExtendedWriter EW, String directory,
 			String timestamp, int ID, String program) {
-		if(core){
+
+		if(memory <= 512)
 			printSBATCHinfoCore(EW,directory,timestamp, String.valueOf(ID), program);
-		}else{
-			if(memory <= 512)
-				printSBATCHinfoNode(EW,directory,timestamp, String.valueOf(ID), program);
-			else
-				printSBATCHinfohalvan(EW,directory,timestamp, String.valueOf(ID), program);
-		}
+		else
+			printSBATCHinfohalvan(EW,directory,timestamp, String.valueOf(ID), program);
 	}
-	
+
 
 
 	public void printSBATCHinfo(ExtendedWriter EW, String directory,
 			String timestamp, String ID, String program) {
-		if(core){
+		if(memory <= 512)
 			printSBATCHinfoCore(EW,directory,timestamp, ID, program);
-		}else{
-			if(memory <= 512)
-				printSBATCHinfoNode(EW,directory,timestamp, ID, program);
-			else
-				printSBATCHinfohalvan(EW,directory,timestamp, ID, program);
-		}
+		else
+			printSBATCHinfohalvan(EW,directory,timestamp, ID, program);
 	}
+
 	public int getNrOfCores(){
-		if(core) return memory/8+1;
-		else return node;
+		if(milou)
+			return Math.max(core, ((this.memory-1)/8)+1);
+		else if(kalkyl)
+			return Math.max(core, ((this.memory-1)/3)+1);
+		else{
+			System.out.println("no System have been called on uppmax " );
+			return 1;
+		}
+
+
 	}
-	
+
 	private void printSBATCHinfoCore(ExtendedWriter EW, String directory,
 			String timestamp, String ID, String program) {
 
@@ -392,11 +580,13 @@ public class SBATCHinfo {
 		EW.println("#! /bin/bash -l");
 		EW.println("#SBATCH -A " + projectNumber);
 		if(milou)
-		EW.println("#SBATCH -M milou");
-		
+			EW.println("#SBATCH -M milou");
+		else if(kalkyl)
+			EW.println("#SBATCH -M kalkyl");
+
 		EW.println("#SBATCH -p core -n "+getNrOfCores());
-		
-		
+
+
 		EW.println("#SBATCH -t " + time);
 		EW.println("#SBATCH -J " + jobName);
 		EW.println("#SBATCH -e " + directory + "/reports/" + jobName
@@ -407,6 +597,12 @@ public class SBATCHinfo {
 		if (email != null) {
 			EW.println("#SBATCH --mail-type=All");
 			EW.println("#SBATCH --mail-user=" + email);
+		}
+		if(this.afterany != null){
+			EW.print("#SBATCH -d afterany");
+			for(int i = 0; i < this.afterany.length; i++){
+				EW.print(":"+afterany[i]);
+			}
 		}
 		if (module != null) {
 			EW.println();
@@ -421,244 +617,17 @@ public class SBATCHinfo {
 		EW.println();
 	}
 
-	private void printSBATCHinfoNode(ExtendedWriter EW, String directory,
+
+
+	private void printSBATCHinfohalvan(ExtendedWriter EW, String directory,
 			String timestamp, String ID, String program) {
 		if (!IOTools.isDir(directory + "/reports")) {
 			IOTools.mkDir(directory + "/reports");
 		}
 
-		if (program.indexOf("/") > -1) {
-			program = program.substring(program.indexOf("/"));
-		}
-		String jobName = ID + "_" + program + "_" + timestamp;
-
-		EW.println("#! /bin/bash -l");
-		EW.println("#SBATCH -A " + projectNumber);
-		EW.println("#SBATCH -p node -n "+this.node+" ");
-		EW.println("#SBATCH -M milou");
-		if(memory >= 128){
-			if(memory <= 256){
-				EW.println("#SBATCH -C mem256GB");
-			}
-			else if(memory <= 512){
-				EW.println("#SBATCH -C mem512GB");
-			}
-		}
-		EW.println("#SBATCH -t " + time);
-		EW.println("#SBATCH -J " + jobName);
-		EW.println("#SBATCH -e " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stderr.txt");
-		EW.println("#SBATCH -o " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stdout.txt");
-		if (email != null) {
-			EW.println("#SBATCH --mail-type=All");
-			EW.println("#SBATCH --mail-user=" + email);
-		}
-
-		if (module != null) {
-			EW.println();
-			EW.println();
-			EW.println("module load bioinfo-tools");
-			for (int i = 0; i < module.length; i++) {
-				EW.println("module load " + module[i]);
-			}
-		}
-
-		EW.println();
-		EW.println();
-	}
-
-
-	
-	
-	
-	
-
-
-/*	public void printSBATCHinfo(ExtendedWriter EW, String directory,
-			String timestamp, int ID, String program, String time) {
-		if (!IOTools.isDir(directory + "/reports")) {
-			IOTools.mkDir(directory + "/reports");
-		}
-
-		if (program.indexOf("/") > -1) {
-			program = program.substring(program.indexOf("/"));
-		}
-		String jobName = ID + "_" + program + "_" + timestamp;
-
-		EW.println("#! /bin/bash -l");
-		EW.println("#SBATCH -A " + projectNumber);
-		EW.println("#SBATCH -p node -n 8 ");
-		EW.println("#SBATCH -C thin");
-		EW.println("#SBATCH -t " + time);
-		EW.println("#SBATCH -J " + jobName);
-		EW.println("#SBATCH -e " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stderr.txt");
-		EW.println("#SBATCH -o " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stdout.txt");
-		if (email != null) {
-			EW.println("#SBATCH --mail-type=All");
-			EW.println("#SBATCH --mail-user=" + email);
-		}
-
-		if (module != null) {
-			EW.println();
-			EW.println();
-			EW.println("module load bioinfo-tools");
-			for (int i = 0; i < module.length; i++) {
-				EW.println("module load " + module[i]);
-			}
-		}
-
-		EW.println();
-		EW.println();
-	}
-*/
-	private void printSBATCHinfo72GB(ExtendedWriter EW, String directory,
-			String timestamp, int ID, String program, String time) {
-		if (!IOTools.isDir(directory + "/reports")) {
-			IOTools.mkDir(directory + "/reports");
-		}
-
-		String jobName = ID + "_" + program + "_" + timestamp;
-
-		EW.println("#! /bin/bash -l");
-		EW.println("#SBATCH -A " + projectNumber);
-		EW.println("#SBATCH -p node");
-		EW.println("#SBATCH -C mem72GB");
-		EW.println("#SBATCH -t " + time);
-		EW.println("#SBATCH -J " + jobName);
-		EW.println("#SBATCH -e " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stderr.txt");
-		EW.println("#SBATCH -o " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stdout.txt");
-
-		if (email != null) {
-			EW.println("#SBATCH --mail-type=All");
-			EW.println("#SBATCH --mail-user=" + email);
-		}
-
-		if (module != null) {
-			EW.println();
-			EW.println();
-			EW.println("module load bioinfo-tools");
-			for (int i = 0; i < module.length; i++) {
-				EW.println("module load " + module[i]);
-			}
-		}
-
-		EW.println();
-		EW.println();
-	}
-
-	private void printSBATCHinfoCore(ExtendedWriter EW, String directory,
-			String timestamp, int ID, String program, String time) {
-
-		if (!IOTools.isDir(directory + "/reports")) {
-			IOTools.mkDir(directory + "/reports");
-		}
-
-		String jobName = ID + "_" + program + "_" + timestamp;
-
-		EW.println("#! /bin/bash -l");
-		EW.println("#SBATCH -A " + projectNumber);
-		EW.println("#SBATCH -p core");
-		EW.println("#SBATCH -t " + time);
-		EW.println("#SBATCH -J " + jobName);
-		EW.println("#SBATCH -e " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stderr.txt");
-		EW.println("#SBATCH -o " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stdout.txt");
-
-		if (email != null) {
-			EW.println("#SBATCH --mail-type=All");
-			EW.println("#SBATCH --mail-user=" + email);
-		}
-		if (module != null) {
-			EW.println();
-			EW.println();
-			EW.println("module load bioinfo-tools");
-			for (int i = 0; i < module.length; i++) {
-				EW.println("module load " + module[i]);
-			}
-		}
-
-		EW.println();
-		EW.println();
-	}
-
-
-
-	private void printSBATCHinfoFat(ExtendedWriter EW, String directory,
-			String timestamp, int ID, String program, String time) {
-
-		if (!IOTools.isDir(directory + "/reports")) {
-			IOTools.mkDir(directory + "/reports");
-		}
-		String jobName = ID + "_" + program + "_" + timestamp;
-
-		EW.println("#! /bin/bash -l");
-		EW.println("#SBATCH -A " + projectNumber);
-		EW.println("#SBATCH -p node");
-		EW.println("#SBATCH -C fat");
-		EW.println("#SBATCH -t " + time);
-		EW.println("#SBATCH -J " + jobName);
-		EW.println("#SBATCH -e " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stderr.txt");
-		EW.println("#SBATCH -o " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stdout.txt");
-
-		if (email != null) {
-			EW.println("#SBATCH --mail-type=All");
-			EW.println("#SBATCH --mail-user=" + email);
-		}
-		if (module != null) {
-			EW.println();
-			EW.println();
-			EW.println("module load bioinfo-tools");
-			for (int i = 0; i < module.length; i++) {
-				EW.println("module load " + module[i]);
-			}
-		}
-
-		EW.println();
-		EW.println();
-	}
-
-	private void printSBATCHinfohalvan(ExtendedWriter EW, String directory,
-			String timestamp, int ID, String program, String time, int MB) {
-		if (!IOTools.isDir(directory + "/reports")) {
-			IOTools.mkDir(directory + "/reports");
-		}
-
-		int nrofnodes = MB / 32 + 1;
-		if (nrofnodes < 4) {
-			nrofnodes = 4;
-			System.out.println("Memory allocated will be " + 4 * 32 + " GB");
-		} else if (nrofnodes < 8) {
-			nrofnodes = 8;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else if (nrofnodes < 16) {
-			nrofnodes = 16;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else if (nrofnodes < 24) {
-			nrofnodes = 24;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else if (nrofnodes < 32) {
-			nrofnodes = 32;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else if (nrofnodes < 40) {
-			nrofnodes = 40;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else if (nrofnodes < 48) {
-			nrofnodes = 48;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else if (nrofnodes < 56) {
-			nrofnodes = 56;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else
-			nrofnodes = 64;
-
+		int nrofnodes = (memory-1) / 32 + 1;
+		System.out.println("Work will be placed on halvan");
+		System.out.println("Memory allocated will be " +nrofnodes * 32 + " GB");
 		String jobName = ID + "_" + program + "_" + timestamp;
 
 		EW.println("#! /bin/bash -l");
@@ -677,6 +646,12 @@ public class SBATCHinfo {
 			EW.println("#SBATCH --mail-type=All");
 			EW.println("#SBATCH --mail-user=" + email);
 		}
+		if(this.afterany != null){
+			EW.print("#SBATCH -d afterany");
+			for(int i = 0; i < this.afterany.length; i++){
+				EW.print(":"+afterany[i]);
+			}
+		}
 
 		if (module != null) {
 			EW.println();
@@ -691,70 +666,35 @@ public class SBATCHinfo {
 		EW.println();
 	}
 
-	private void printSBATCHinfohalvan(ExtendedWriter EW, String directory,
-			String timestamp, String ID, String program) {
-		if (!IOTools.isDir(directory + "/reports")) {
-			IOTools.mkDir(directory + "/reports");
-		}
 
-		int nrofnodes = memory / 32 + 1;
-		if (nrofnodes < 4) {
-			nrofnodes = 4;
-			System.out.println("Memory allocated will be " + 4 * 32 + " GB");
-		} else if (nrofnodes < 8) {
-			nrofnodes = 8;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else if (nrofnodes < 16) {
-			nrofnodes = 16;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else if (nrofnodes < 24) {
-			nrofnodes = 24;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else if (nrofnodes < 32) {
-			nrofnodes = 32;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else if (nrofnodes < 40) {
-			nrofnodes = 40;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else if (nrofnodes < 48) {
-			nrofnodes = 48;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else if (nrofnodes < 56) {
-			nrofnodes = 56;
-			System.out.println("Memory allocated will be " + 8 * 32 + " GB");
-		} else
-			nrofnodes = 64;
+	public void printSBATCHscript(ExtendedWriter masterShellScript, 
+			String outDir,String commandLine, ArrayList<String> tempOutFiles, ArrayList<String> finalOutFiles, String function) {
+		try {
+			String sbatchFileName = outDir + "/scripts/" + getTimeStamp() + "_"
+					+ finalOutFiles.get(0) + "_" + function + ".sbatch";
 
-		String jobName = ID + "_" + program + "_" + timestamp;
-
-		EW.println("#! /bin/bash -l");
-		EW.println("#SBATCH -A " + projectNumber);
-		EW.println("#SBATCH -M halvan");
-		EW.println("#SBATCH -p halvan");
-		EW.println("#SBATCH -n " + nrofnodes);
-		EW.println("#SBATCH -t " + time);
-		EW.println("#SBATCH -J " + jobName);
-		EW.println("#SBATCH -e " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stderr.txt");
-		EW.println("#SBATCH -o " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stdout.txt");
-
-		if (email != null) {
-			EW.println("#SBATCH --mail-type=All");
-			EW.println("#SBATCH --mail-user=" + email);
-		}
-
-		if (module != null) {
+			masterShellScript.println("sbatch "+sbatchFileName);
+			ExtendedWriter EW = new ExtendedWriter(new FileWriter(sbatchFileName));
+			printSBATCHinfo(EW, outDir, getTimeStamp(), finalOutFiles.get(0), function);
 			EW.println();
 			EW.println();
-			EW.println("module load bioinfo-tools");
-			for (int i = 0; i < module.length; i++) {
-				EW.println("module load " + module[i]);
+			EW.println("cd " + outDir);
+			EW.println();
+			EW.println();
+			EW.println(commandLine);
+			EW.println();
+			for(int i = 0; i < tempOutFiles.size(); i++){
+				EW.println("mv " + tempOutFiles.get(i) + " "+ finalOutFiles.get(i));
 			}
-		}
+			EW.println();
+			EW.println("wait");
 
-		EW.println();
-		EW.println();
+			EW.flush();
+			EW.close();
+
+		} catch (Exception E) {
+			E.printStackTrace();
+		}
 	}
 
 
@@ -798,28 +738,16 @@ public class SBATCHinfo {
 	}
 
 
-	public int getNode() {
-		return node;
-	}
-
-
-	public void setNode(int node) {
-		this.node = node;
-	}
-
-
-	public boolean isCore() {
-		return core;
-	}
-
-
-	public void setCore(boolean core) {
-		this.core = core;
-	}
-
 
 	public int getMemory() {
-		return memory;
+		if(milou)
+			return Math.max(core*8-1, this.memory);
+		else if(kalkyl)
+			return Math.max(core*3-1, this.memory);
+		else{
+			System.out.println("no System have been called on uppmax " );
+			return 8;
+		}
 	}
 
 	public int getMemoryPadded() {
@@ -827,8 +755,8 @@ public class SBATCHinfo {
 			return memory-1;
 		return memory-3;
 	}
-	
-	
+
+
 
 	public void setMemory(int memory) {
 		if(memory <= 128)
@@ -836,7 +764,7 @@ public class SBATCHinfo {
 		else if(memory <= 256)
 			this.memory = (int)Math.ceil((double)memory/(double)16);
 		else if(memory <= 512)
-			this.memory = (int)Math.ceil((double)memory/(double)16);
+			this.memory = (int)Math.ceil((double)memory/(double)32);
 		else
 			this.memory = (int)Math.ceil((double)memory/(double)32);
 	}
@@ -870,6 +798,8 @@ public class SBATCHinfo {
 	public void setMilou(boolean milou) {
 		this.milou = milou;
 	}
+
+
 
 
 

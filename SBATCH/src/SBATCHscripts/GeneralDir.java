@@ -126,6 +126,8 @@ public class GeneralDir {
 			System.out.println("To start all the scripts write ");
 			System.out.println("sh "+projectDir
 					+ "/scripts/" +  sbatch.getTimeStamp() + "_start"+program+"_SBATCHScript.sh");
+			
+			
 
 		} catch (Exception E) {
 			E.printStackTrace();

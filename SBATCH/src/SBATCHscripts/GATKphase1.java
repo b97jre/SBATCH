@@ -136,8 +136,8 @@ public class GATKphase1 {
 		if (T.containsKey("-ReAlign")
 				|| T.containsKey("-AddOrReplaceReadGroups")
 				|| T.containsKey("-BQSR") || T.containsKey("-BQSRprint")
-				|| T.containsKey("-ReduceReads")) sub = true;
-		
+				|| T.containsKey("-ReduceReads")
+				|| T.containsKey("-sub")) sub = true;
 		
 		else if (T.containsKey("-single")) fullDirSplit = true;		
 		else fullDir= true; 
@@ -188,7 +188,8 @@ public class GATKphase1 {
 		if (T.containsKey("-ReAlign")
 				|| T.containsKey("-AddOrReplaceReadGroups")
 				|| T.containsKey("-BQSR") || T.containsKey("-BQSRprint")
-				|| T.containsKey("-ReduceReads")) sub = true;
+				|| T.containsKey("-ReduceReads")
+				|| T.containsKey("-sub")) sub = true;
 		
 		
 		else if (T.containsKey("-single")) fullDirSplit = true;		

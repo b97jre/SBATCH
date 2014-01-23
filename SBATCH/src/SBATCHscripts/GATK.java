@@ -1191,7 +1191,7 @@ public class GATK {
 	}
 
 	public static String Genotype(int memory, String GATKDir, String bamFile,
-			String reference, String baseName, String knownSNPVCF) {
+			String reference, String baseName, String knownSNPVCF, int nrOfThreads) {
 
 		/*
 		 * java -Xmx23g -jar
@@ -1220,7 +1220,7 @@ public class GATK {
 				+ GATKDir
 				+ "/GenomeAnalysisTK.jar "
 				+ "-T UnifiedGenotyper "
-				+ "-nt 7 "
+				+ "-nt "+nrOfThreads
 				+ "-I "
 				+ bamFile
 				+ " "

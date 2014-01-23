@@ -55,6 +55,7 @@ public class GeneralOneFile {
 		PFAM,
 		TRIMFASTQFILES,
 		SAMTOOLS,
+		GATK,
 		HELP
 	}	
 
@@ -85,13 +86,14 @@ public class GeneralOneFile {
 		else if(IOTools.isDir(inDir)){
 			allPresent = false;
 		}
-		if(!checkParameters(T)) allPresent= false;
+		if(!checkParameters(T)) return;
 
 		if (allPresent)
 			generalStart(T, sbatch, sbatch.timeStamp);
-		else
+		else{
 			System.out.println("\n\nAborting run because of missing arguments.");
-		help(T);
+			help(T);
+		}
 	}
 
 	public void generalStart(Hashtable<String, String> T, SBATCHinfo sbatch,
@@ -257,6 +259,13 @@ public class GeneralOneFile {
 					TFF.trimFastQFile(EW,sbatch, generalSbatchScript, inDir, fileName);
 				printSBATCHinfoEND(EW,"TrimFastqFiles");
 				break;
+			case GATK:
+				EW = printSBATCHinfoSTART(sbatch,generalSbatchScript,inDir,fileName, "GATKgenotype");
+				GATKgenotype GATKgt = new GATKgenotype();
+				if(GATKgt.addParameters(T))
+					GATKgt.GATKGenotypeSample(EW,sbatch, inDir, fileName);
+				printSBATCHinfoEND(EW,"TrimFastqFiles");
+				break;
 			default: help(T);	
 
 			}	
@@ -292,6 +301,9 @@ public class GeneralOneFile {
 			case TRIMFASTQFILES:
 				TrimFastqFiles TFF = new TrimFastqFiles();
 				return TFF.addParameters(T);
+			case GATK:
+				GATKgenotype GATKgt = new GATKgenotype();
+				return GATKgt.checkParameters(T);
 			default: help(T);
 			return false;
 

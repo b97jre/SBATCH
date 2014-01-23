@@ -128,7 +128,7 @@ public class CutAdapt {
 							commonName+".cutAdapt.1.fastq.gz", 
 							commonName+".cutAdapt.2.fastq.gz");
 
-			FastQCSBATCH FQC = new FastQCSBATCH();
+			FastQC FQC = new FastQC();
 				// FastQCstep
 			FQC.FastQCSample(EW, inDir,forward);
 			FQC.FastQCSample(EW, inDir, reverse);

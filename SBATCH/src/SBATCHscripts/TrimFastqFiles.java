@@ -91,7 +91,7 @@ public class TrimFastqFiles {
 							fileWithoutSuffix+".cutAdapt.fastq.gz");
 			}
 
-			FastQCSBATCH FQC = new FastQCSBATCH();
+			FastQC FQC = new FastQC();
 			// FastQCstep
 			FQC.FastQCSample(EW, inDir,forward);
 			FQC.FastQCSample(EW, inDir, fileWithoutSuffix+".cutAdapt.fastq.gz");
@@ -117,7 +117,7 @@ public class TrimFastqFiles {
 							fileWithoutSuffix+".cutAdapt.fastq.gz");
 			}
 
-			FastQCSBATCH FQC = new FastQCSBATCH();
+			FastQC FQC = new FastQC();
 			// FastQCstep
 			FQC.FastQCSample(EW, inDir,forward);
 			FQC.FastQCSample(EW, inDir, fileWithoutSuffix+".cutAdapt.fastq.gz");
@@ -173,7 +173,7 @@ public class TrimFastqFiles {
 				}
 			}
 
-			FastQCSBATCH FQC = new FastQCSBATCH();
+			FastQC FQC = new FastQC();
 			// FastQCstep
 			FQC.FastQCSample(EW, inDir,forward);
 			FQC.FastQCSample(EW, inDir, reverse);
