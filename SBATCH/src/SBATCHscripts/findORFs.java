@@ -142,6 +142,13 @@ public class findORFs {
 
 			EW.println();
 			EW.println("cd " + inDir);
+			
+			String filebase = Functions.getFileWithoutSuffix(fileName, suffix);
+			
+		
+			filebase = extractAboveCommand(EW,filebase,350,suffix);
+			filebase = CDHitEST(EW,filebase,1,suffix);
+			
 
 			findORFCommand(EW, fileName);
 
@@ -182,12 +189,46 @@ public class findORFs {
 		EW.println();
 		EW.println("echo RUNNING findORFs");
 		EW.println();
-		EW.println("java  -Xmx2G -jar ~/bin/HTStools.jar -p sequenceHandling ORFs -i "
+		EW.println("java  -Xmx2G -jar /glob/johanr/bin/HTStools.jar -p sequenceHandling ORFs -i "
 				+ inFile);
 		EW.println();
 		EW.println("echo DONE");
 	}
 
+	
+	public static String extractAboveCommand(ExtendedWriter EW, String inBase,int length,String suffix) {
+
+		EW.println("module load java");
+		EW.println();
+		EW.println();
+		EW.println("echo RUNNING extractAbove");
+		EW.println();
+		EW.println("java  -Xmx2G -jar /glob/johanr/bin/HTStools.jar -p sequenceHandling EXTRACTABOVE"
+				+" -i "+ inBase+"."+suffix
+				+" -length "+ length
+				+" -suffix "+ suffix
+				);
+		EW.println();
+		EW.println("echo DONE");
+		return inBase+"."+length+"."+suffix;
+	}
+	
+	
+	public static String CDHitEST(ExtendedWriter EW, String inBase,float C,String suffix) {
+
+		EW.println("echo RUNNING cdHit-EST");
+		EW.println();
+		EW.println("/glob/johanr/bin/cd-hit-est"+
+				" -i "+ inBase+"."+suffix +
+				" -o "+ inBase+".cdHitEst_"+C+"."+suffix +
+				" -c "+C
+				);
+		EW.println();
+		EW.println("echo DONE");
+		return inBase+".cdHitEst_"+C;
+	}
+	
+	
 	public static void runPfamCommand(ExtendedWriter EW, String inFile,
 			String outFile) {
 

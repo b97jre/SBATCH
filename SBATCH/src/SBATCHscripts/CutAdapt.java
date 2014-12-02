@@ -11,6 +11,7 @@ import java.util.EnumSet;
 import java.util.Hashtable;
 
 import SBATCHscripts.SBATCHinfo.Programs;
+import Sequence.FastaSequences;
 
 import general.ExtendedReader;
 import general.ExtendedWriter;
@@ -28,7 +29,8 @@ public class CutAdapt {
 	int length;
 	int overlap;
 	boolean hiseq;
-
+	boolean split;
+	String untrimmedFileName;
 
 	public static void main(String[] args) {
 
@@ -46,16 +48,20 @@ public class CutAdapt {
 	public CutAdapt() {
 		hiseq = false;
 		threeAdapters = null;
+		untrimmedFileName = null;
 
 	}
 
-	public void help(){
+	public static void help(){
 
 		System.out.println("At least one flag for cutAdapt has to be present:");
 		System.out.println(Functions.fixedLength("-a <3PrimeAdapterSequenceFile>", 30)+"This is the location of the file that contains all the adaptersequences");
 		System.out.println(Functions.fixedLength("-b <AdapterSequenceFile>", 30)+"This is the location of the file that contains all the adaptersequences");
 		System.out.println(Functions.fixedLength("-q <PhredScoreQualtiy>", 30)+"");
 		System.out.println(Functions.fixedLength("-m <MinimumLength>",30)+"");
+		System.out.println(Functions.fixedLength("-untrimmed-output <untrimedFileName>",30)+"");
+		
+		
 		System.out.println("");
 
 		System.out.println("For more details concerning the cutadapt flags see cutadapt manual");
@@ -77,6 +83,12 @@ public class CutAdapt {
 		cutoff = Functions.getInt(T, "-q", -1);
 		length = Functions.getInt(T, "-m", -1);
 		overlap = Functions.getInt(T, "-overlap", 3);
+		
+		if(T.containsKey("-untrimmedFileName")){
+			this.split = true;
+			this.untrimmedFileName = Functions.getValue(T, "-untrimmedFileName");
+		}
+		
 
 		if(length >-1 || cutoff > -1 || threeAdapters != null || otherAdapters != null) return true;
 		help();
@@ -84,24 +96,121 @@ public class CutAdapt {
 
 	}
 
-	public boolean checkParameters(Hashtable<String, String> T){
+	public static boolean checkParameters(Hashtable<String, String> T){
 		String threePrimeAdaptersFile = Functions.getValue(T, "-a", null);
-		if(threePrimeAdaptersFile != null)
-			threeAdapters = getAdapters(threePrimeAdaptersFile);
+	
 		String allAdaptersFile = Functions.getValue(T, "-b",  null);
-		if(allAdaptersFile != null)
-			otherAdapters = getAdapters(allAdaptersFile);
-		cutoff = Functions.getInt(T, "-q", -1);
-		length = Functions.getInt(T, "-m", -1);
-		overlap = Functions.getInt(T, "-overlap", 3);
+		int cutoff = Functions.getInt(T, "-q", -1);
+		int length = Functions.getInt(T, "-m", -1);
 
-		if(length >-1 || cutoff > -1 || threeAdapters != null || otherAdapters != null) return true;
+		if(length >-1 || cutoff > -1 || threePrimeAdaptersFile != null || allAdaptersFile != null) return true;
 		help();
 		return false;
 
 
 	}
 
+	
+	public void trimFastQFile(SBATCHinfo sbatch,
+			ExtendedWriter generalSbatchScript, String inDir, String outDir, String inFile, String suffix) {
+		String finalDir = inDir;
+		String inDirName = new File(inDir).getName();
+		
+		String fileBase = Functions.getFileWithoutSuffix(inFile, suffix);
+		String outFile = fileBase+".cutAdapt."+suffix;
+		if(split && this.untrimmedFileName == null){	
+			this.untrimmedFileName=fileBase+".cutAdapt.Untrimmed."+suffix;
+		}
+		try {
+			if (!IOTools.isDir(finalDir + "/reports"))
+				IOTools.mkDir(finalDir + "/reports");
+			if (!IOTools.isDir(finalDir + "/scripts"))
+				IOTools.mkDir(finalDir + "/scripts");
+
+			String sbatchFile = finalDir + "/scripts/" + sbatch.timeStamp
+					+ "_" + inDirName +"_"+inFile+ "_Cutadapt.sbatch";
+			generalSbatchScript.println("sbatch " + sbatchFile);
+			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
+					sbatchFile));
+
+			sbatch.printSBATCHinfo(EW, inDir, sbatch.timeStamp,inFile, "CutAdapt");
+			
+			if(split)
+				addCutAdaptStep(EW, 
+						inDir,
+						outDir,
+						inFile, 
+						outFile,
+						this.untrimmedFileName);
+			else
+				addCutAdaptStep(EW, 
+						inDir,
+						outDir,
+						inFile, 
+						outFile);
+			
+
+			FastQC FQC = new FastQC();
+				// FastQCstep
+			FQC.FastQCSample(EW, inDir,inFile);
+			FQC.FastQCSample(EW, inDir, fileBase+".cutAdapt."+suffix);
+			if(split)
+			FQC.FastQCSample(EW, inDir, fileBase+".cutAdapt.Untrimmed."+suffix);
+			
+
+			EW.println();
+			EW.flush();
+			EW.close();
+		}
+		catch(Exception E){
+			E.printStackTrace();
+		}
+	}	
+	
+	
+	public void trimFastQFile(SBATCHinfo sbatch,
+			ExtendedWriter generalSbatchScript, String inDir, String outDir, String inFile, String outFile, String untrimmedFile) {
+		String finalDir = inDir;
+		String inDirName = new File(inDir).getName();
+		try {
+			if (!IOTools.isDir(finalDir + "/reports"))
+				IOTools.mkDir(finalDir + "/reports");
+			if (!IOTools.isDir(finalDir + "/scripts"))
+				IOTools.mkDir(finalDir + "/scripts");
+
+			String sbatchFile = finalDir + "/scripts/" + sbatch.timeStamp
+					+ "_" + inDirName +"_"+inFile+ "_Cutadapt.sbatch";
+			generalSbatchScript.println("sbatch " + sbatchFile);
+			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
+					sbatchFile));
+
+			sbatch.printSBATCHinfo(EW, inDir, sbatch.timeStamp,inFile, "CutAdapt");
+
+			addCutAdaptStep(EW, 
+							inDir,
+							outDir,
+							inFile, 
+							outFile,
+							untrimmedFile);
+
+			FastQC FQC = new FastQC();
+				// FastQCstep
+			FQC.FastQCSample(EW, inDir,inFile);
+			FQC.FastQCSample(EW, inDir, outFile);
+			if(untrimmedFile != null){
+				FQC.FastQCSample(EW, inDir, untrimmedFile);
+			}
+
+			EW.println();
+			EW.flush();
+			EW.close();
+		}
+		catch(Exception E){
+			E.printStackTrace();
+		}
+	}	
+	
+	
 	public void trimFastQFiles(SBATCHinfo sbatch,
 			ExtendedWriter generalSbatchScript, String inDir, String forward, String reverse) {
 		String finalDir = inDir;
@@ -143,6 +252,90 @@ public class CutAdapt {
 			E.printStackTrace();
 		}
 	}	
+	
+	
+	public void addCutAdaptStep(ExtendedWriter EW, String inDir,String outDir,
+			String inFile, String outFile,String untrimmedFile) {
+		EW.println();
+		EW.println();
+		EW.println("#############################################################################################################");
+		EW.println("## Running cutadapt 1.3 START");
+		EW.println("#############################################################################################################");
+		EW.println();
+		EW.println();
+		EW.println();
+		EW.print("/sw/apps/bioinfo/cutadapt/1.3/kalkyl/bin/cutadapt");
+
+		if (cutoff > -1)
+			EW.print(" -q " + cutoff + " ");
+		if (length > -1)
+			EW.print(" --minimum-length " + length + " ");
+		if (threeAdapters != null ||  otherAdapters != null){
+			EW.print(" --overlap=" + this.overlap + " ");
+			if (threeAdapters != null) {
+				for (int j = 0; j < threeAdapters.size(); j++) {
+					EW.print(" -a " + threeAdapters.get(j));
+				}
+			}
+			if (otherAdapters != null) {
+				for (int j = 0; j < otherAdapters.size(); j++) {
+					EW.print(" -b " + otherAdapters.get(j));
+				}
+			}
+		}
+		EW.print(" --untrimmed-output=" + outDir + "/" + untrimmedFile);
+		EW.print(" -o " + outDir + "/" + outFile);
+		
+		EW.println(" " + inDir + "/" + inFile);
+		EW.println();
+		EW.println("#############################################################################################################");
+		EW.println("## running cutadapt DONE");
+		EW.println("#############################################################################################################");
+		EW.println();
+		EW.println();
+
+	}
+	
+	public void addCutAdaptStep(ExtendedWriter EW, String inDir,String outDir,
+			String inFile, String outFile) {
+		EW.println();
+		EW.println();
+		EW.println("#############################################################################################################");
+		EW.println("## Running cutadapt 1.3 START");
+		EW.println("#############################################################################################################");
+		EW.println();
+		EW.println();
+		EW.println();
+		EW.print("/sw/apps/bioinfo/cutadapt/1.3/kalkyl/bin/cutadapt");
+
+		if (cutoff > -1)
+			EW.print(" -q " + cutoff + " ");
+		if (length > -1)
+			EW.print(" --minimum-length " + length + " ");
+		if (threeAdapters != null ||  otherAdapters != null){
+			EW.print(" --overlap=" + this.overlap + " ");
+			if (threeAdapters != null) {
+				for (int j = 0; j < threeAdapters.size(); j++) {
+					EW.print(" -a " + threeAdapters.get(j));
+				}
+			}
+			if (otherAdapters != null) {
+				for (int j = 0; j < otherAdapters.size(); j++) {
+					EW.print(" -b " + otherAdapters.get(j));
+				}
+			}
+		}
+		EW.print(" -o " + inDir + "/" + outFile);
+		EW.println(" " + inDir + "/" + inFile);
+		EW.println();
+		EW.println("#############################################################################################################");
+		EW.println("## running cutadapt DONE");
+		EW.println("#############################################################################################################");
+		EW.println();
+		EW.println();
+
+	}
+	
 
 
 	
@@ -288,14 +481,15 @@ public class CutAdapt {
 		ArrayList<String> SequenceFiles = new ArrayList<String>();
 		if (file != null) {
 			try {
-				ExtendedReader ER = new ExtendedReader(new FileReader(file));
-				while (ER.more()) {
-					SequenceFiles.add(ER.readLine());
-				}
-			} catch (Exception E) {
+				FastaSequences FS = new FastaSequences(file);
+				for(int i = 0; i < FS.size();i++){
+					SequenceFiles.add(FS.get(i).getStringSequence());
+				} 
+			}catch (Exception E) {
 				E.printStackTrace();
 			}
 		}
 		return SequenceFiles;
 	}
 }
+ 

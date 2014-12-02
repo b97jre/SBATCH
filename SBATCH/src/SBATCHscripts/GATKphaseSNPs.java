@@ -24,7 +24,10 @@ public class GATKphaseSNPs {
 	String vcfFile;
 	String pedigreeFile;
 	int cutoff;
-	
+
+
+
+
 
 	boolean respectAlreadyPhased;
 
@@ -42,17 +45,11 @@ public class GATKphaseSNPs {
 		System.out.println("Mandatory values for GATK phaseSNPs:");
 		System.out.println(Functions.fixedLength("-i <inDirectory> ", 50)+"Directory where all files with suffix under will be used for one vcf file");
 		System.out.println(Functions.fixedLength("-R <ReferenceFile.fa>", 50)+"Reference fasta file");
-		System.out.println(Functions.fixedLength("-vcfFile <vcfFile.vcf>", 50)+"Vcf file with known SNPs");
+		System.out.println(Functions.fixedLength("-DNAPhasedVcfFile <vcfFile.vcf>", 50)+"Vcf file with phased SNPs");
+//		System.out.println(Functions.fixedLength("-BedFile <vcfFile.bed>", 50)+"Vcf file with phased SNPs");
+		
 		System.out.println();
 
-
-
-		System.out.println("Optional values:");
-		System.out.println(Functions.fixedLength("-suffix", 50)+"End of bamfiles that will be used for readBackedPhasing");
-		System.out.println(Functions.fixedLength("-ped <PedigreeFile.ped>", 50)+"Pedigree file that will be used for PhaseByTransmission");
-		System.out.println(Functions.fixedLength("-respectPhasedInput", 50)+"If samples already are phased GATK will respect that");
-		System.out.println(Functions.fixedLength("-cutoff", 50)+"Default 10 000 000. Will split up the run in parallel for different contigs ");
-		System.out.println();
 
 		System.out.println();
 		System.out.println();
@@ -61,11 +58,7 @@ public class GATKphaseSNPs {
 
 	public boolean addParameters(Hashtable<String, String> T) {
 
-		GATKdir = Functions.getValue(T, "-GATKDir",
-				"/sw/apps/bioinfo/GATK/2.5.2/");
-		this.suffix = Functions.getValue(T,"-suffix",null);
-
-
+	
 		this.directory = Functions.getValue(T, "-i");
 		File ref = new File(this.directory);
 		this.directory = ref.getAbsolutePath();
@@ -74,21 +67,19 @@ public class GATKphaseSNPs {
 		ref = new File(this.Reference);
 		this.Reference = ref.getAbsolutePath();
 
-		vcfFile = Functions.getValue(T, "-vcfFile");
+		vcfFile = Functions.getValue(T, "-DNAPhasedVcfFile");
 		ref = new File(this.vcfFile);
 		vcfFile = ref.getAbsolutePath();
+		
+		suffix =  Functions.getValue(T, "-suffix",null);
+		pedigreeFile =  Functions.getValue(T, "-ped",null);
 
-		this.pedigreeFile = Functions.getValue(T, "-ped", null);
-		if(this.pedigreeFile != null){		
-			ref = new File(this.pedigreeFile);
-			this.pedigreeFile = ref.getAbsolutePath();
-		}
 
 		respectAlreadyPhased = false;
 		if (T.containsKey("-respectPhaseInInput"))
 			respectAlreadyPhased = true;
-		
-		
+
+
 		this.cutoff = Functions.getInt(T, "-cutoff", -1);
 
 		return true;
@@ -102,7 +93,7 @@ public class GATKphaseSNPs {
 		if (!T.containsKey("-i")){System.out.println("-i is missing" ); allPresent = false;}
 		if (!T.containsKey("-R")){System.out.println("-R is missing" ); allPresent = false;}
 		if(!T.containsKey("-suffix")){System.out.println("-suffix is missing" ); allPresent = false;}		
-		if(!T.containsKey("-vcfFile")){System.out.println("-vcfFile is missing" ); allPresent = false;}
+		if(!T.containsKey("-DNAPhasedVcfFile")){System.out.println("-DNAPhasedVcfFile is missing" ); allPresent = false;}
 
 
 		if(allPresent) return true;
@@ -146,41 +137,8 @@ public class GATKphaseSNPs {
 		return fileNames;
 	}
 
-	
-	
-	public static void merge(ArrayList<String> sequenceFiles, String dir,
-			String outFile) {
 
-		System.out.println("merging VCF files in folder " + dir + " to file "
-				+ outFile);
 
-		try {
-			ExtendedWriter EW = new ExtendedWriter(new FileWriter(dir + "/"
-					+ outFile));
-			ExtendedReader ER = new ExtendedReader(new FileReader(dir + "/"
-					+ sequenceFiles.get(0)));
-			while (ER.more()) {
-				EW.println(ER.readLine());
-			}
-			ER.close();
-			for (int i = 1; i < sequenceFiles.size(); i++) {
-				System.out.println(" now adding file " + sequenceFiles.get(i));
-				ER = new ExtendedReader(new FileReader(dir + "/"
-						+ sequenceFiles.get(i)));
-				while (ER.more()) {
-					if (ER.lookAhead() != '#')
-						EW.println(ER.readLine());
-					else
-						ER.skipLine();
-				}
-				ER.close();
-			}
-			EW.flush();
-			EW.close();
-		} catch (Exception E) {
-			E.printStackTrace();
-		}
-	}
 
 
 
@@ -216,7 +174,7 @@ public class GATKphaseSNPs {
 
 			if(this.pedigreeFile != null){
 				String sbatchFileName = outDir + "/scripts/" + sbatch.getTimeStamp() + "_"
-						 +"phaseSNPs_GATK.sbatch";
+						+"phaseSNPs_GATK.sbatch";
 				ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 						sbatchFileName));
 				sbatch.printSBATCHinfo(EW, outDir, sbatch.getTimeStamp(), 0, "GATK_phaseSNPs");
@@ -224,7 +182,7 @@ public class GATKphaseSNPs {
 				EW.println("cd " + outDir);
 
 				String VCFfile = this.vcfFile.substring(0,this.vcfFile.indexOf(".vcf"));
-				
+
 				if(VCFfile.lastIndexOf(".") == VCFfile.length()){
 					VCFfile = VCFfile.substring(0,VCFfile.length()-1);
 				}
@@ -238,11 +196,11 @@ public class GATKphaseSNPs {
 				EW.println(commandLine);
 				VCFfile = VCFfile+".phaseByTransmission";
 				this.respectAlreadyPhased = true;
-				
+
 				EW.flush();
 				EW.close();
-			
-				
+
+
 			}
 			else{
 				GATKPhaseReadBackedPhasing(sbatch);
@@ -278,21 +236,21 @@ public class GATKphaseSNPs {
 
 			ExtendedWriter superShellScript = sbatch.printShellInfoSTART("GATK_SNPphase",outDir);
 
-			
+
 			String VCFfile = new File(this.vcfFile).getName();
 			VCFfile = VCFfile.substring(0,VCFfile.indexOf(".vcf"));
-			
+
 			if(VCFfile.lastIndexOf(".") == VCFfile.length()){
 				VCFfile = VCFfile.substring(0,VCFfile.length()-1);
 			}
 			String VCFfolder = new File(this.vcfFile).getParent();
-			
-			
-			
+
+
+
 			ArrayList<Integer> lengths = FastaSequences.getLengths(Reference);
 			ArrayList<String> names = FastaSequences.getNames(Reference);
 			ArrayList<String> fileNames = getFilesWithSuffix(outDir);
-			
+
 			System.out.println("Files considered for final vcf file:");
 			for (int i = 0; i < fileNames.size(); i++) {
 				System.out.println(fileNames.get(i));
@@ -301,14 +259,16 @@ public class GATKphaseSNPs {
 			System.out.println();
 			int count = 0;
 			int pointer = 0;
+			ArrayList<String> VCFfiles = new ArrayList<String>();
+
 			while (pointer < names.size()){
-				
+
 				int size = lengths.get(pointer);
 				ArrayList<String> SubNames = new ArrayList<String>();
 				String interval = names.get(pointer) + ":" + 1
 						+ "-" + size;
 				SubNames.add(interval);					
-			pointer++;
+				pointer++;
 				while (pointer < lengths.size() && size < cutoff ) {
 					size += lengths.get(pointer);
 					interval = names.get(pointer) + ":" + 1
@@ -316,54 +276,72 @@ public class GATKphaseSNPs {
 					SubNames.add(interval);					
 					pointer++;
 				}
-				
-				
-				
-				
+
+
+
+
 				ArrayList<String> tempFiles = new ArrayList<String>();
 				ArrayList<String> finalFiles = new ArrayList<String>();
-				
+
+				ArrayList<String> tempIdxFiles = new ArrayList<String>();
+				ArrayList<String> finalIdxFiles = new ArrayList<String>();
+
 				tempFiles.add(outDir+"/"+VCFfile
 						+ ".ReadPhased."+count+".vcf.tmp");
 				finalFiles.add(outDir+"/"+VCFfile
 						+ ".ReadPhased."+count+".vcf");
-				tempFiles.add(outDir+"/"+VCFfile
+				VCFfiles.add(VCFfile+ ".ReadPhased."+count+".vcf");
+				tempIdxFiles.add(outDir+"/"+VCFfile
 						+ ".ReadPhased."+count+".vcf.tmp.idx");
-				finalFiles.add(outDir+"/"+VCFfile
+				finalIdxFiles.add(outDir+"/"+VCFfile
 						+ ".ReadPhased."+count+".vcf.idx");
-				
-				
-				
+
+
+
 				superShellScript.println("sbatch "+sbatch.getSbatchFileName("GATK_ReadBacked_Phasing", outDir,count));
-				
+
 				ExtendedWriter EW = sbatch.printSBATCHInfoSTART("GATK_ReadBacked_Phasing", outDir,count); 
-				
+
 				EW.println("cd "+outDir);
-				
+
 				if(cutoff == -1 ){
 					SubNames = null;
 					pointer = lengths.size(); 
 				}
-				
+
 				String commandLine = ReadBackedPhasing(sbatch.getMemoryPadded(),
 						this.GATKdir, fileNames, this.Reference, tempFiles.get(0), VCFfolder+"/"+VCFfile+ ".vcf", 10.0,
 						respectAlreadyPhased,SubNames);
 				EW.println(commandLine);
 				EW.println();
+				EW.println("# Moving vcf files");
 				sbatch.mvTempFiles(EW, tempFiles,finalFiles);
-				
+				EW.println();
+				EW.println("# Moving idx files");
+				sbatch.mvTempFiles(EW, tempIdxFiles,finalIdxFiles);
+
+
+
 				EW.flush();
 				EW.close();
 				//System.out.println(commandLine);
 				count++;
 			}
-			sbatch.printShellInfoSTOP(superShellScript,"GATK_SNPphase",outDir);
+			
+			String shellScriptFile = sbatch.printShellInfoSTOP(superShellScript,"GATK_SNPphase",outDir);
+			
+			ArrayList<Integer> jobids = sbatch.startSbatchScripts(shellScriptFile);
+			sbatch.addAfterAny(jobids);
+			String MergeSbatchScriptFile = Merge.getSBATCHscript(sbatch, outDir, outDir, VCFfiles, "GATK", 0);
+			Integer jobid = sbatch.startSbatchScript(MergeSbatchScriptFile);
 
 		} catch (Exception E) {
 			E.printStackTrace();
 		}
 	}
 
+	
+	
 
 
 

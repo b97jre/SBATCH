@@ -4,7 +4,6 @@ import general.ExtendedReader;
 import general.ExtendedWriter;
 import general.Functions;
 import general.IOTools;
-import general.RNAfunctions;
 
 import java.io.File;
 import java.io.FileReader;
@@ -13,8 +12,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Hashtable;
 
+import Sequence.FastaSequences;
 
-public class Blast {
+public class OneFile {
 
 	double Evalue;
 	String blastDB;
@@ -31,19 +31,18 @@ public class Blast {
 	String finalFinalName;
 
 
-	public Blast(double Evalue,String blastDB, String blastProgram){
+	public OneFile(double Evalue,String blastDB, String blastProgram){
 		this.Evalue = Evalue;
 		this.blastDB = blastDB;
 		this.blastProgram = blastProgram;
 	}
 
-	public Blast(){}
+	public OneFile(){}
 
 	public void addMergeInfo(Hashtable<String, String> T){
 		this.outputFormat = Functions.getValue(T,"-outfmt", "6");
 	}
-	
-	public Blast(Hashtable<String, String> T) {
+	public OneFile(Hashtable<String, String> T) {
 		this.outputFormat = Functions.getValue(T,"-outfmt", "6");
 
 		this.Evalue = Functions.getDouble(T, "-evalue", 0.001);
@@ -148,7 +147,7 @@ public class Blast {
 		if (T.containsKey("-length")) {
 			ArrayList <String> sbatchScripts = new ArrayList<String>();
 			int peptidedPerFile = Functions.getInt(T, "-length", 20000);
-			ArrayList<String> fileNames = RNAfunctions.splitSize(inDir, fileName, peptidedPerFile, suffix);
+			ArrayList<String> fileNames = FastaSequences.splitSize(inDir, fileName, peptidedPerFile, suffix);
 			for (int i = 0; i < fileNames.size(); i++) {
 
 				sbatchScripts.add(runBlastFile(generalSbatchScript, sbatch, timestamp, inDir+"/tmp",
@@ -239,7 +238,7 @@ public class Blast {
 
 			EW.println("# going to correct directory");
 			EW.println("cd " + inDir);
-			EW.println(Blast.BlastCommand(blastProgram,fileName, blastDB, outFile,
+			EW.println(OneFile.BlastCommand(blastProgram,fileName, blastDB, outFile,
 					Evalue,this.outputFormat,this.max_target_seqs,this.extra));
 			if(this.outputFormat.contains("5")){
 				EW.println("mv "+outFile+".tmp "+outDir+"/"+outFile+".xml");

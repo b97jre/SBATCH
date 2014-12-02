@@ -14,13 +14,25 @@ import Sequence.FastaSequences;
 
 public class PFAM {
 
+	String pfamDB;
+	ArrayList<String> tmpFiles;
+
 	public PFAM() {
+
 	}
 
+	public PFAM(Hashtable<String, String> T) {
+		pfamDB = Functions.getValue(T, "-pfamDatabase",
+					"/bubo/nobackup/uppnex/pfam2011");
+
+	}
+	
+	
 
 	public static void help(){
 		System.out.println("");
 		System.out.println("PFAM specific flags");
+		System.out.println(Functions.fixedLength("-pfamDatabase <PFAMDB>",30)+"Database that PFAM will run against. Default is /bubo/nobackup/uppnex/pfam2011");
 		System.out.println(Functions.fixedLength("-split <nrOfSequencesPerRun>",30)+"will split up file for parralel runs");
 		System.out.println("");
 	}
@@ -30,13 +42,15 @@ public class PFAM {
 			ExtendedWriter generalSbatchScript, SBATCHinfo sbatch,
 			String timestamp, String inDir, String outDir, String fileName,
 			String suffix) {
+		
+		PFAM A = new PFAM(T);
 
 		if (T.containsKey("-split")) {
 			int peptidedPerFile = Functions.getInt(T, "-split", 1000);
 			ArrayList<String> fileNames = FastaSequences.split(inDir, fileName,
 					peptidedPerFile, suffix);
 			for (int i = 0; i < fileNames.size(); i++) {
-				runPfamFile(T, generalSbatchScript, sbatch, timestamp, inDir,
+				A.runPfamFile(generalSbatchScript, sbatch, timestamp, inDir,
 						outDir, fileNames.get(i));
 			}
 			try {
@@ -59,14 +73,13 @@ public class PFAM {
 			}
 
 		} else {
-			runPfamFile(T, generalSbatchScript, sbatch, timestamp, inDir,
+			A.runPfamFile(generalSbatchScript, sbatch, timestamp, inDir,
 					outDir, fileName);
 
 		}
 	}
 
-	public static void runPfamFile(Hashtable<String, String> T,
-			ExtendedWriter generalSbatchScript, SBATCHinfo sbatch,
+	public  void runPfamFile(ExtendedWriter generalSbatchScript, SBATCHinfo sbatch,
 			String timestamp, String inDir, String outDir, String fileName) {
 
 		try {
@@ -89,12 +102,11 @@ public class PFAM {
 			EW.println("# going to correct directory");
 			EW.println("cd " + inDir);
 
-			String pfamDB = "/bubo/nobackup/uppnex/pfam2011";
-			if (T.containsKey("-pfamDatabase"))
-				pfamDB = Functions.getValue(T, "-pfamDatabase",
-						"/bubo/nobackup/uppnex/pfam2011");
 
-			EW.println(PfamCommand(fileName, pfamDB, T));
+			EW.println(PfamCommand(fileName, pfamDB, "tmp."+fileName+".pfam"));
+			EW.println("mv tmp."+fileName+".pfam "+fileName+".pfam");
+			this.tmpFiles.add(fileName+".pfam");
+			
 			EW.flush();
 			EW.close();
 
@@ -103,6 +115,11 @@ public class PFAM {
 		}
 	}
 
+	
+	public  void getPfamFileName( String fileName) {
+			this.tmpFiles.add(fileName+".pfam");
+	}
+	
 	public static void merge(ArrayList<String> sequenceFiles, String dir,
 			String outFile) {
 
@@ -137,8 +154,43 @@ public class PFAM {
 		}
 	}
 
-	public static String PfamCommand(String fasta_file, String pfamDB,
-			Hashtable<String, String> T) {
+	public void merge( String inDir, String outDir,
+			String outFile) {
+
+		System.out.println("merging pfam files in folder " + inDir + " to file "
+				+ outDir+"/"+ outFile);
+
+		try {
+			ExtendedWriter EW = new ExtendedWriter(new FileWriter(outDir + "/"
+					+ outFile));
+			ExtendedReader ER = new ExtendedReader(new FileReader(inDir + "/"
+					+ tmpFiles.get(0)));
+			while (ER.more()) {
+				EW.println(ER.readLine());
+			}
+			ER.close();
+			for (int i = 1; i < tmpFiles.size(); i++) {
+				System.out.println(" now adding file " + tmpFiles.get(i));
+				ER = new ExtendedReader(new FileReader(inDir + "/"
+						+ tmpFiles.get(i)));
+				while (ER.more()) {
+					if (ER.lookAhead() != '#')
+						EW.println(ER.readLine());
+					else
+						ER.skipLine();
+				}
+				ER.close();
+			}
+			EW.flush();
+			EW.close();
+		} catch (Exception E) {
+			E.printStackTrace();
+		}
+	}
+	
+	
+	
+	public static String PfamCommand(String fasta_file, String pfamDB, String pfamFile) {
 
 		// more information can be added right now only default works
 
@@ -168,7 +220,7 @@ public class PFAM {
 		 */
 
 		return "pfam_scan.pl -fasta " + fasta_file + " -dir " + pfamDB
-				+ " -outfile " + fasta_file+".pfam";
+				+ " -outfile " + pfamFile;
 	}
 
 }

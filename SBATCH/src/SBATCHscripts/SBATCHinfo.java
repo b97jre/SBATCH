@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.Hashtable;
 
+import general.ExtendedReader;
 import general.ExtendedWriter;
 import general.Functions;
 import general.IOTools;
@@ -17,7 +18,7 @@ public class SBATCHinfo {
 	private String projectNumber;
 	private String email;
 	private String[] module;
-	private int[] afterany;
+	private ArrayList<Integer> afterany;
 	private String time;
 	private int core;
 	private int memory;
@@ -25,26 +26,34 @@ public class SBATCHinfo {
 
 	public boolean interactive; 
 	boolean milou;
-	boolean kalkyl;
 
+	String jarPath;
+	String fileParserJarFile;
+	String programName;
 
 
 
 
 	public static void main(String[] args) {
+
 		int length = args.length;
 
+
 		System.out.println("Current flags:");
-		for (int i = 0; i < length; i++) {
-			args[i] = args[i].trim();
-			System.out.print(args[i] + " ");
-		}
-		System.out.println();
-		System.out.println();
+		//		for (int i = 0; i < length; i++) {
+		//			args[i] = args[i].trim();
+		//			System.out.print(args[i] + " ");
+		//		}
+		//		System.out.println();
+		//		System.out.println();
 
 		Hashtable<String, String> T = Functions.parseCommandLine(args);
 		SBATCHinfo SBATCH = new SBATCHinfo();
 
+		SBATCH.jarPath = SBATCHinfo.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+		SBATCH.fileParserJarFile = Functions.getValue(T, "-fileParserJarFile","/glob/johanr/bin/FileParser.jar");
+
+		//System.out.println("The path to the jar file is : "+SBATCH.jarPath);
 		if (!SBATCH.run(T)) {
 			System.out
 			.println("script did not run properly becuase some input was missing.");
@@ -81,7 +90,16 @@ public class SBATCHinfo {
 		PANTHER,
 		PFAM,
 		TRIMFASTQFILES,
+		TRIMDENOVOFILES,
 		ONELINE,
+		PHASERNA,
+		SKELLYFORMAT,
+		ANNOTATEPROTEIN,
+		BLAST2GO,
+		ARGOT2,
+		PERSONALIZEDSKELLYFORMAT,
+		BAM2WIG,
+		HTSEQ,
 		HELP
 	}
 
@@ -103,10 +121,14 @@ public class SBATCHinfo {
 				help();
 				return false;
 			}
-		}
+		}else
+			this.interactive = true;
 
 		core = Functions.getInt(T,"-core", 1);
+
 		memory = Functions.getInt(T,"-memory",8);
+
+
 		milou = true;
 		projectNumber = Functions.getValue(T, "-pNr", "b2010035");
 		email = Functions.getValue(T, "-email", "johan.reimegard@scilifelab.se");
@@ -128,28 +150,43 @@ public class SBATCHinfo {
 
 		if (T.containsKey("-afterany")) {
 			String modules = Functions.getValue(T, "-afterany");
+			this.afterany = new ArrayList<Integer>();
 			if (modules.indexOf(" ") > -1){
 				String[] temp = modules.split(" ");
-				this.afterany = new int[temp.length];
-				for(int i = 0; i< afterany.length; i++){
-					afterany[i] = Integer.parseInt(temp[i]);
+				for(int i = 0; i< temp.length; i++){
+					afterany.add(Integer.parseInt(temp[i]));
 				}
 			}else {
-				afterany = new int[1];
-				afterany[0] = Integer.parseInt(modules);
+				afterany.add(Integer.parseInt(modules));
 			}
 		}
-	
-		
-		String programName = Functions.getValue(T, "-program",Functions.getValue(T, "-p","help"));
-		System.out.println("programName");
+
+		if (T.containsKey("-node")) {
+			core = Functions.getInt(T,"-node", 16);
+		}
+
+
+		programName = Functions.getValue(T, "-program",Functions.getValue(T, "-p","help"));
+		System.out.println("programName "+programName);
 		Programs program = Programs.valueOf(programName.toUpperCase());
 
 		switch (program) {
 		case STAR:
-			GeneralPairFile star = new GeneralPairFile();
-			star.run(T,this);
+			if(T.containsKey("-sep")){
+				GeneralPairFile star = new GeneralPairFile();
+				star.run(T,this);
+			}
+			else{
+				System.out.println("Did not contain flag -sep to identify paired end reads. ");
+				System.out.println("Assuming single end reads. ");
+				GeneralOneFile star = new GeneralOneFile();
+				star.run(T, this);
+			}
 			break;
+		case BAM2WIG:
+			GeneralOneFile bam2wig = new GeneralOneFile();
+			bam2wig.run(T, this);
+		
 		case PICARD:
 			Picard picard = new Picard();
 			picard.run(T);
@@ -161,6 +198,7 @@ public class SBATCHinfo {
 					GeneralDir general = new GeneralDir();
 					if(general.addParameters(T,this))
 						general.generalStart(T, this);
+
 				}
 				else if(gatk.phase2){	
 					GATKphase2 phase2 = new GATKphase2();
@@ -192,8 +230,8 @@ public class SBATCHinfo {
 			deNovoAssembly.run(T);
 			break;
 		case DENOVOANALYSIS:
-			analyseDeNovoTranscripts analyze = new analyseDeNovoTranscripts();
-			analyze.run(T);
+			AnnotateRNA analyze = new AnnotateRNA(T);
+//			analyze.run(T,this);
 			break;
 		case EXTENSION:
 			deNovoExtension deNovoExtension = new deNovoExtension();
@@ -239,6 +277,16 @@ public class SBATCHinfo {
 			GeneralOneFile samtools = new GeneralOneFile();
 			samtools.run(T,this);
 			break;
+		case HTSEQ:
+			GeneralOneFile htseq = new GeneralOneFile();
+			ArrayList<Integer> jobIds = htseq.run(T,this);
+			if(jobIds != null){
+				String suffix = Functions.getValue(T, "-newSuffix", "htseqCount");
+				String script = HTseqCount.mergeHTseqSbatchScript(this, jobIds, this.fileParserJarFile, 
+						Functions.getValue(T, "-i"), suffix, "htseqCount.merged."+suffix+".table.tab.txt") ;
+				startSbatchScript(script);
+			}
+			break;
 		case BOWTIE2:
 			if(T.containsKey("-sep")){
 				GeneralPairFile bowtie2 = new GeneralPairFile();
@@ -269,7 +317,7 @@ public class SBATCHinfo {
 			break;
 		case MERGE:
 			Merge merge = new Merge();
-			merge.run(T);
+			merge.run(T,this);
 			break;
 		case BLAST:
 			GeneralOneFile general = new GeneralOneFile();
@@ -282,6 +330,39 @@ public class SBATCHinfo {
 		case PANTHER:
 			GeneralOneFile panther = new GeneralOneFile();
 			panther.run(T,this);
+			break;
+		case PHASERNA:
+			phaseRNAsSNPs phaseRNAs = new phaseRNAsSNPs();
+			if(phaseRNAs.checkParameters(T)){
+				phaseRNAs.addParameters(T);
+				phaseRNAs.phaseRNAs(this);
+			}
+			break;
+		case SKELLYFORMAT:
+			SkellyFormat SF = new SkellyFormat();
+			if(SF.checkParameters(T)){
+				SF.addParameters(T);
+				SF.getSkellyFormat(this);
+			}
+			break;
+		case PERSONALIZEDSKELLYFORMAT:
+			PersonalizedSkellyFormat PSF = new PersonalizedSkellyFormat();
+			if(PSF.checkParameters(T)){
+				PSF.addParameters(T);
+				PSF.getSkellyFormat(this);
+			}
+			break;
+		case BLAST2GO:
+			Blast2GO blast2GO = new Blast2GO();
+			blast2GO.run(T,this);
+			break;
+		case ARGOT2:
+			Argot2 argot2 = new Argot2();
+			argot2.run(T,this);
+			break;
+		case ANNOTATEPROTEIN:
+			AnnotateAASequences annotateAA = new AnnotateAASequences();
+			annotateAA.run(T,this);
 			break;
 		case PFAM:
 			GeneralOneFile pfam = new GeneralOneFile();
@@ -299,6 +380,10 @@ public class SBATCHinfo {
 				trimFastqFiles.run(T,this);
 			}
 			break;
+		case TRIMDENOVOFILES:
+			GeneralOneFile trimDeNovoFiles = new GeneralOneFile();
+			trimDeNovoFiles.run(T,this);
+			break;
 		case ONELINE:
 			System.out.println("One line it is");
 			if(T.containsKey("-i")){
@@ -315,9 +400,9 @@ public class SBATCHinfo {
 
 	public void oneLine(Hashtable<String, String> T){
 		String oneLine  = T.get("-i");
-		System.out.println("The line to be ran is :");
+		System.out.println("The line to be runned is :");
 		System.out.println(oneLine);
-		
+
 		ExtendedWriter EW = printSBATCHInfoSTART("oneLine");
 		EW.println();
 		EW.println();
@@ -332,6 +417,7 @@ public class SBATCHinfo {
 		EW.println();
 		EW.flush();
 		EW.close();
+
 		try {
 			String line;
 			Process p = Runtime.getRuntime().exec("sbatch "+getSbatchFileName("oneLine"));
@@ -345,9 +431,137 @@ public class SBATCHinfo {
 		catch (Exception e) {
 			e.printStackTrace();
 		}
-
-
 	}
+
+	public ArrayList<Integer> startSbatchScripts(String shellScript){
+
+		try {
+			ArrayList<Integer> jobids = new ArrayList<Integer>();
+			ExtendedReader ER = ExtendedReader.getFileReader(shellScript);
+			while(ER.more()){
+				String sbatchScript = ER.readLine();
+				System.out.println("Starting sbatchscript "+ sbatchScript);
+				Integer A = null;
+				if(sbatchScript.indexOf("sbatch ") == 0){
+					A = startSbatchScript(sbatchScript.split(" ")[1]);
+				}else{
+					A = startSbatchScript(sbatchScript);
+				}
+				if(A!= null)
+					jobids.add(A);
+			}
+			ER.close();
+			return jobids;
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+
+	public ArrayList<Integer> startSbatchScripts(ArrayList<String> sbatchScripts){
+
+		try {
+			ArrayList<Integer> jobids = new ArrayList<Integer>();
+			for(int i = 0; i< sbatchScripts.size();i++){
+				System.out.println("Starting sbatchscript "+ sbatchScripts.get(i));
+				Integer A = startSbatchScript(sbatchScripts.get(i));
+				if(A!= null)
+					jobids.add(A);
+			}
+			return jobids;
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+
+	public Integer startSbatchScript(String sbatchScript){
+		Integer I = null;
+		try {
+			String line;
+			Process p = Runtime.getRuntime().exec("sbatch "+sbatchScript);
+			BufferedReader in = new BufferedReader(
+					new InputStreamReader(p.getInputStream()) );
+			while ((line = in.readLine()) != null) {
+				System.out.println(line);
+				// Submitted batch job 906647 on cluster milou
+				String[] info = line.split(" ");
+				I = Integer.parseInt(info[3]);
+			}
+			in.close();
+			in = new BufferedReader(
+					new InputStreamReader(p.getErrorStream()) );
+			while ((line = in.readLine()) != null) {
+				System.out.println(line);
+				// Submitted batch job 906647 on cluster milou
+			}
+			if(I == null){
+				System.out.println("ATTENTION!! sbatchScript "+sbatchScript+" did not start properly");
+			}
+			else{
+				if(memory <= 512)
+					System.out.println("Submitted batch job id is "+I+" on cluster milou");
+				else
+					System.out.println("Submitted batch job id is "+I+" on Halvan");
+				return I;
+			}
+
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+
+
+	public String writeSbatchScript( ArrayList<Integer> afterAny,ArrayList<String> Executions, String programName){
+		System.out.println("The lines to be runned is :");
+		for(int i = 0; i < Executions.size();i++){
+			System.out.println(Executions.get(i));
+		}
+		if(afterAny != null){
+			System.out.println("The program will be running after  line to be runned is :");
+			this.afterany = afterAny;
+		}
+
+		ExtendedWriter EW = printSBATCHInfoSTART(programName);
+		EW.println();
+		EW.println();
+		for(int i = 0; i < Executions.size();i++){
+			EW.println(Executions.get(i));
+		}
+		EW.println();
+		EW.println();
+		EW.flush();
+		EW.close();
+		return getSbatchFileName(programName);
+	}
+
+	public Integer submitSBATCHScript(String sbatchFileName){
+		try {
+			String line;
+			Process p = Runtime.getRuntime().exec("sbatch "+sbatchFileName);
+			BufferedReader in = new BufferedReader(
+					new InputStreamReader(p.getInputStream()) );
+			while ((line = in.readLine()) != null) {
+				System.out.println(line);
+
+			}
+			in.close();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+
+
 	public String getSbatchFileName(String program) {
 		String cDir = IOTools.getCurrentPath();
 		String sbatchFile = cDir + "/scripts/" +program 
@@ -356,19 +570,45 @@ public class SBATCHinfo {
 
 	}
 
+	public String getSbatchFileName(String program, String cDir) {
+		String sbatchFile = cDir + "/scripts/" +program 
+				+ "_" +new File(cDir).getName()+ "_"+timeStamp +".sbatch";
+		return sbatchFile;
+
+	}
+
+
+	public ExtendedWriter printSBATCHInfoSTART(String program, String inDir,  ArrayList<Integer> afterAny){
+		ArrayList<Integer> temp = this.afterany;
+		this.afterany=afterAny;
+		ExtendedWriter EW = printSBATCHInfoSTART(program,inDir);
+		this.afterany = temp;
+		return EW;
+	}
+
+	public ExtendedWriter printSBATCHInfoSTART(String program, ArrayList<Integer> afterAny){
+		String cp = IOTools.getCurrentPath();
+		return printSBATCHInfoSTART(program,cp,afterAny);
+	}
+
 	public ExtendedWriter printSBATCHInfoSTART(String program) {
+		String cp = IOTools.getCurrentPath();
+		return printSBATCHInfoSTART(program,cp);
+	}
+
+	public ExtendedWriter printSBATCHInfoSTART(String program, String inDir) {
 		try {
-			String cDir = IOTools.getCurrentPath();
-			if (!IOTools.isDir(cDir + "/reports"))
-				IOTools.mkDir(cDir + "/reports");
-			if (!IOTools.isDir(cDir + "/scripts"))
-				IOTools.mkDir(cDir + "/scripts");
-			String sbatchFile = cDir + "/scripts/" +program 
-					+ "_" +new File(cDir).getName()+ "_"+timeStamp +".sbatch";			
+			if (!IOTools.isDir(inDir + "/reports"))
+				IOTools.mkDir(inDir + "/reports");
+			if (!IOTools.isDir(inDir + "/scripts"))
+				IOTools.mkDir(inDir + "/scripts");
+			String sbatchFile = inDir + "/scripts/" +program 
+					+ "_" +new File(inDir).getName()+ "_"+timeStamp +".sbatch";			
+			System.out.println("Creating sbatch_file :"+sbatchFile);
 			ExtendedWriter EW = ExtendedWriter.getFileWriter(sbatchFile);
-			this.printSBATCHinfo(EW, cDir, timeStamp, 0, program);
-			
-			EW.println("cd "+cDir);
+			this.printSBATCHinfo(EW, inDir, timeStamp, 0, program);
+
+			EW.println("cd "+inDir);
 			return EW;
 		}
 		catch(Exception E){
@@ -377,6 +617,11 @@ public class SBATCHinfo {
 		return null;
 	}
 
+	public String getSBATCHfileName(String program, String inDir) {
+		String sbatchFile = inDir + "/scripts/" +program 
+				+ "_" +new File(inDir).getName()+ "_"+timeStamp +".sbatch";			
+		return sbatchFile;
+	}
 
 	public ExtendedWriter printShellInfoSTART(String program) {
 		try {
@@ -442,7 +687,33 @@ public class SBATCHinfo {
 		return null;
 	}
 
-	public void printShellInfoSTOP(ExtendedWriter EW, String program, String inDir ) {
+
+	public ExtendedWriter printSBATCHInfoSTART(String program, String inDir, int count, ArrayList<Integer> afterAny ) {
+		try {
+			if (!IOTools.isDir(inDir + "/reports"))
+				IOTools.mkDir(inDir + "/reports");
+			if (!IOTools.isDir(inDir + "/scripts"))
+				IOTools.mkDir(inDir + "/scripts");
+			ArrayList<Integer> temp = this.afterany;
+			this.afterany = afterAny;
+			String sbatchFile = getSbatchFileName(program,inDir,count);
+			ExtendedWriter EW = ExtendedWriter.getFileWriter(sbatchFile);
+
+			printSBATCHinfo(EW, inDir, getTimeStamp(), count, program);
+
+			EW.println();
+			EW.println("cd "+inDir);
+			this.afterany = temp;
+			return EW;
+		}
+		catch(Exception E){
+			E.printStackTrace();
+		}
+		return null;
+	}
+
+
+	public String printShellInfoSTOP(ExtendedWriter EW, String program, String inDir ) {
 		try {
 			EW.flush();
 			EW.close();
@@ -454,11 +725,21 @@ public class SBATCHinfo {
 			System.out.println("All things seems to have run properly!");
 			System.out.println("To start all the scripts write  :");
 			System.out.println("sh "+sbatchFile);
+
+			return sbatchFile;
 		}
 		catch(Exception E){
 			E.printStackTrace();
 		}
+		return null;
 	}
+
+
+	public void printInteractiveStart(ExtendedWriter EW, String programName) {
+		EW.print("java -Xmx"+this.getMemoryPadded()+"G -jar "+this.jarPath+" -interactive -program "+programName+" " );
+	}
+
+
 
 	public void mvTempFiles(ExtendedWriter EW, String dir, ArrayList<String> temp, ArrayList<String> finalFile){
 		for(int i = 0; i < temp.size();i++){
@@ -558,8 +839,6 @@ public class SBATCHinfo {
 	public int getNrOfCores(){
 		if(milou)
 			return Math.max(core, ((this.memory-1)/8)+1);
-		else if(kalkyl)
-			return Math.max(core, ((this.memory-1)/3)+1);
 		else{
 			System.out.println("no System have been called on uppmax " );
 			return 1;
@@ -581,8 +860,6 @@ public class SBATCHinfo {
 		EW.println("#SBATCH -A " + projectNumber);
 		if(milou)
 			EW.println("#SBATCH -M milou");
-		else if(kalkyl)
-			EW.println("#SBATCH -M kalkyl");
 
 		EW.println("#SBATCH -p core -n "+getNrOfCores());
 
@@ -600,8 +877,16 @@ public class SBATCHinfo {
 		}
 		if(this.afterany != null){
 			EW.print("#SBATCH -d afterany");
-			for(int i = 0; i < this.afterany.length; i++){
-				EW.print(":"+afterany[i]);
+			if(this.afterany.size() < 80){ 
+				for(int i = 0; i < this.afterany.size(); i++){
+					EW.print(":"+afterany.get(i));
+				}
+				EW.println();
+			}else{
+				for(int i = this.afterany.size()-80; i < this.afterany.size(); i++){
+					EW.print(":"+afterany.get(i));
+				}
+				EW.println();
 			}
 		}
 		if (module != null) {
@@ -648,8 +933,8 @@ public class SBATCHinfo {
 		}
 		if(this.afterany != null){
 			EW.print("#SBATCH -d afterany");
-			for(int i = 0; i < this.afterany.length; i++){
-				EW.print(":"+afterany[i]);
+			for(int i = 0; i < this.afterany.size(); i++){
+				EW.print(":"+afterany.get(i));
 			}
 		}
 
@@ -742,8 +1027,6 @@ public class SBATCHinfo {
 	public int getMemory() {
 		if(milou)
 			return Math.max(core*8-1, this.memory);
-		else if(kalkyl)
-			return Math.max(core*3-1, this.memory);
 		else{
 			System.out.println("no System have been called on uppmax " );
 			return 8;
@@ -799,6 +1082,10 @@ public class SBATCHinfo {
 		this.milou = milou;
 	}
 
+
+	public void addAfterAny(ArrayList<Integer>projNumbers){
+		this.afterany = projNumbers;
+	}
 
 
 

@@ -91,7 +91,10 @@ public class GeneralDir {
 			if(!gatk.addParameters(T)) return false;
 			if(gatk.phase1){
 				GATKphase1 phase1 = new GATKphase1();
-				if(!phase1.checkParameters(T)) return false;
+				if(!phase1.checkParameters(T)){
+					phase1.help();
+					return false;
+				}
 				
 			}
 			break;

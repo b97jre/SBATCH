@@ -61,14 +61,14 @@ public class FastQC {
 			time = Functions.getValue(T, "-t", "15:00");
 		else {
 			System.out
-					.println("must contain likely time -t now set to default 15 minutes");
+			.println("must contain likely time -t now set to default 15 minutes");
 		}
 
 		if (allPresent)
 			FastQC(sbatch, timeStamp);
 		else
 			System.out
-					.println("\n\nAborting run because of missing arguments for fastQC.");
+			.println("\n\nAborting run because of missing arguments for fastQC.");
 	}
 
 	public void FastQC(SBATCHinfo sbatch, String timeStamp) {
@@ -140,46 +140,84 @@ public class FastQC {
 
 	}
 
-	public void FastQCSample(ExtendedWriter EW, String inDir, String fileName){
-		EW.println();
-		EW.println("#####################################################################");
-		EW.println("#FastQC of sample " + inDir + "/" + fileName);
-		EW.println();
-		if (!dependencies) {
+	public void FastQCSample(ExtendedWriter generalSbatchScript,
+			SBATCHinfo sbatch, String inDir, String fileName, String suffix) {
+
+
+		String finalOutDir = inDir + "/FastQC";
+		if (!IOTools.isDir(finalOutDir))
+			IOTools.mkDir(finalOutDir);
+		if (!IOTools.isDir(finalOutDir + "/reports"))
+			IOTools.mkDir(finalOutDir + "/reports");
+		if (!IOTools.isDir(finalOutDir + "/scripts"))
+			IOTools.mkDir(finalOutDir + "/scripts");
+
+		String sbatchFileName = finalOutDir + "/scripts/" + sbatch.getTimeStamp()
+				+ "_" + Functions.getFileWithoutSuffix(fileName, suffix) + "_FastQC.sbatch";
+		generalSbatchScript.println("sbatch " + sbatchFileName);
+		try {
+			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
+					sbatchFileName));
+			sbatch.printSBATCHinfo(EW, finalOutDir, sbatch.getTimeStamp(),
+					0, "FastQC");
+
+			EW.println();
 			EW.println("module load bioinfo-tools");
 			EW.println("module load FastQC");
 			EW.println();
-			dependencies = true;
+			EW.println("cd " + inDir);
+			EW.println("fastqc -o " + finalOutDir + " "
+					+ fileName);
+
+			EW.flush();
+			EW.close();
+		} catch (Exception E) {
+			E.printStackTrace();
 		}
-		EW.println("cd " + inDir);
-		if(!IOTools.isDir(inDir+"/"+"fastQC"))
-				IOTools.mkDirs(inDir+"/"+"fastQC");
-		
-		EW.println("fastqc -o fastQC " + fileName);
-		EW.println();
-		EW.println("#FastQC stop");
-		EW.println("#####################################################################");
-		EW.println();
+
 	}
 
-	public void FastQCSample(ExtendedWriter EW, String inDir, String fileName, String fileNameWithoutSuffix) {
+
+public void FastQCSample(ExtendedWriter EW, String inDir, String fileName){
+	EW.println();
+	EW.println("#####################################################################");
+	EW.println("#FastQC of sample " + inDir + "/" + fileName);
+	EW.println();
+	if (!dependencies) {
+		EW.println("module load bioinfo-tools");
+		EW.println("module load FastQC");
 		EW.println();
-		EW.println("#####################################################################");
-		EW.println("#FastQC of sample " + inDir + "/" + fileName);
-		EW.println();
-		if (!dependencies) {
-			EW.println("module load bioinfo-tools");
-			EW.println("module load FastQC");
-			EW.println();
-			dependencies = true;
-		}
-		EW.println("cd " + inDir);
-		EW.println("fastqc -o fastQC_"+fileNameWithoutSuffix+" "+fileName);
-		EW.println();
-		EW.println("#FastQC stop");
-		EW.println("#####################################################################");
-		EW.println();
+		dependencies = true;
 	}
-	
-	
+	EW.println("cd " + inDir);
+	if(!IOTools.isDir(inDir+"/"+"fastQC"))
+		IOTools.mkDirs(inDir+"/"+"fastQC");
+
+	EW.println("fastqc -o fastQC " + fileName);
+	EW.println();
+	EW.println("#FastQC stop");
+	EW.println("#####################################################################");
+	EW.println();
+}
+
+public void FastQCSample(ExtendedWriter EW, String inDir, String fileName, String fileNameWithoutSuffix) {
+	EW.println();
+	EW.println("#####################################################################");
+	EW.println("#FastQC of sample " + inDir + "/" + fileName);
+	EW.println();
+	if (!dependencies) {
+		EW.println("module load bioinfo-tools");
+		EW.println("module load FastQC");
+		EW.println();
+		dependencies = true;
+	}
+	EW.println("cd " + inDir);
+	EW.println("fastqc -o fastQC_"+fileNameWithoutSuffix+" "+fileName);
+	EW.println();
+	EW.println("#FastQC stop");
+	EW.println("#####################################################################");
+	EW.println();
+}
+
+
 }

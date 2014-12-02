@@ -18,6 +18,7 @@ public class Samtools {
 	String time;
 	int F;
 	int f;
+	int q;
 
 	boolean merge;
 	boolean sort;
@@ -95,6 +96,7 @@ public class Samtools {
 							+ suffix);
 		F = Functions.getInt(T, "-F", 0);
 		f = Functions.getInt(T, "-f", 0);
+		q = Functions.getInt(T, "-q", 0);
 
 		if (T.containsKey("-view"))
 			this.view = true;
@@ -129,6 +131,7 @@ public class Samtools {
 
 		F = Functions.getInt(T, "-F", 0);
 		f = Functions.getInt(T, "-f", 0);
+		q = Functions.getInt(T, "-q", 0);
 
 		if (T.containsKey("-view"))
 			this.view = true;
@@ -156,16 +159,8 @@ public class Samtools {
 		boolean allPresent = true;
 		if (!T.containsKey("-i"))
 			allPresent = false;
-		if (!T.containsKey("-i"))
-			suffix = Functions.getValue(T, "-suffix", "sam");
-		else
-			suffix = inDir.substring(inDir.lastIndexOf(".") + 1);
 		if (!T.containsKey("-suffix"))
-			System.out
-					.println("must contain a suffix e.g. -suffix sam/bam now set to "
-							+ suffix);
-		F = Functions.getInt(T, "-F", 0);
-		f = Functions.getInt(T, "-f", 0);
+			allPresent = false;
 
 		if (T.containsKey("-view"))
 			this.view = true;
@@ -272,10 +267,10 @@ public class Samtools {
 					String nameBase = fileNames.get(i).substring(0,
 							fileNames.get(i).indexOf(suffix));
 					if (suffix.indexOf("sam") > -1)
-						sam2bam(EW, fileNames.get(i), f, F, sort, header, view,
+						sam2bam(EW, fileNames.get(i), f, F,q, sort, header, view,
 								flagstat, index);
 					else
-						bam2bam(EW, fileNames.get(i), f, F, sort, header, view,
+						bam2bam(EW, fileNames.get(i), f, F,q, sort, header, view,
 								flagstat, index);
 
 					EW.flush();
@@ -317,9 +312,9 @@ public class Samtools {
 			EW.println("cd " + finalOutDir);
 			EW.println();
 			if (suffix.indexOf("sam") > -1)
-				sam2bam(EW, fileName, f, F, sort, header, view, flagstat, index);
+				sam2bam(EW, fileName, f, F, q, sort, header, view, flagstat, index);
 			else
-				bam2bam(EW, fileName, f, F, sort, header, view, flagstat, index);
+				bam2bam(EW, fileName, f, F, q, sort, header, view, flagstat, index);
 
 			EW.flush();
 			EW.close();
@@ -334,14 +329,14 @@ public class Samtools {
 			EW.println("cd " + finalOutDir);
 			EW.println();
 			if (suffix.indexOf("sam") > -1)
-				sam2bam(EW, fileName, f, F, sort, header, view, flagstat, index);
+				sam2bam(EW, fileName, f, F, q, sort, header, view, flagstat, index);
 			else
-				bam2bam(EW, fileName, f, F, sort, header, view, flagstat, index);
+				bam2bam(EW, fileName, f, F, q, sort, header, view, flagstat, index);
 	}
 
 	
 	public static String sam2bam(ExtendedWriter EW, String samFile, int f,
-			int F, boolean sort, boolean header, boolean view,
+			int F, int q, boolean sort, boolean header, boolean view,
 			boolean flagstat, boolean index) {
 		String suffix = ".sam";
 		String nameBase = samFile;
@@ -356,14 +351,22 @@ public class Samtools {
 				EW.print("samtools view -bS");
 			else
 				EW.print("samtools view -bSh");
-			if (F > 0 || f > 0) {
-				if (F > 0)
+			if (view && (F > 0 || f > 0 || q > 0)) {
+				String outBase = nameBase;
+				if (F > 0){
 					EW.print(" -F " + F);
-				if (f > 0)
+					outBase = outBase + ".F_" + F;
+				}if (f > 0){
 					EW.print(" -f " + f);
-				EW.println(" -o " + nameBase + ".F_" + F + ".f_" + f + ".bam "
+					outBase = outBase + ".f_" + f;
+				}if (q > 0){
+					EW.print(" -q " + q);
+					outBase = outBase + ".q_" + q;
+				}
+				
+				EW.println(" -o " + outBase + ".bam "
 						+ samFile);
-				nameBase = nameBase + ".F_" + F + ".f_" + f;
+				nameBase = outBase;
 			} else {
 				EW.println(" -o " + nameBase + ".bam " + samFile);
 			}
@@ -389,7 +392,24 @@ public class Samtools {
 		return null;
 	}
 
-	public static void bam2bam(ExtendedWriter EW, String bamFile, int f, int F,
+	
+	public static String mpileUp(ExtendedWriter EW, String reference, String bamFile, String flags) {
+		String nameBase = bamFile;
+		if (bamFile.endsWith(".bam"))
+			nameBase = bamFile.substring(0, bamFile.lastIndexOf(".bam"));
+		EW.println();
+		EW.println("module load bioinfo-tools");
+		EW.println("module load samtools");
+		EW.println();
+		EW.println("samtools mpileup "+flags+" -f "+reference+" "+bamFile+" >"+nameBase+".mpileup");
+		EW.println();
+		EW.println();
+		return nameBase+".mpileup";
+	}
+		
+	
+	
+	public static String bam2bam(ExtendedWriter EW, String bamFile, int f, int F,int q,
 			boolean sort, boolean header, boolean view, boolean flagstat,
 			boolean index) {
 		String nameBase = bamFile;
@@ -399,18 +419,26 @@ public class Samtools {
 		EW.println("module load bioinfo-tools");
 		EW.println("module load samtools");
 		EW.println();
-		if (view && (F > 0 || f > 0)) {
+		if (view && (F > 0 || f > 0 || q > 0)) {
+			String outBase = nameBase;
 			if (!header)
 				EW.print("samtools view -b");
 			else
 				EW.print("samtools view -bh");
-			if (F > 0)
+			if (F > 0){
 				EW.print(" -F " + F);
-			if (f > 0)
+				outBase = outBase + ".F_" + F;
+			}if (f > 0){
 				EW.print(" -f " + f);
-			EW.println(" -o " + nameBase + ".F_" + F + ".f_" + f + ".bam "
+				outBase = outBase + ".f_" + f;
+			}if (q > 0){
+				EW.print(" -q " + q);
+				outBase = outBase + ".q_" + q;
+			}
+			
+			EW.println(" -o " + outBase + ".bam "
 					+ bamFile);
-			nameBase = nameBase + ".F_" + F + ".f_" + f;
+			nameBase = outBase;
 		}
 		if (sort) {
 			EW.println("samtools sort " + nameBase + ".bam " + nameBase
@@ -426,7 +454,11 @@ public class Samtools {
 			EW.println("samtools idxstat " + nameBase + ".bam >" + nameBase
 					+ ".idxstat");
 		}
+		return nameBase+".bam";
 	}
+	
+	
+	
 
 	public void samtoolsSortReads(ExtendedWriter generalSbatchScript,
 			SBATCHinfo sbatch, String finalInDir, String finalOutDir,

@@ -51,6 +51,7 @@ public class GeneralPairFile {
 		STAR,
 		TOPHAT,
 		TOPHAT2,
+		BOWTIE2,
 		BWA,
 		TRIMFASTQFILES,
 		CUTADAPT,
@@ -140,6 +141,8 @@ public class GeneralPairFile {
 			ExtendedWriter generalSbatchScript, SBATCHinfo sbatch,
 			String inDir, String outDir) {
 
+		System.out.println("Finding files with suffix "+suffix+" in folder "+inDir );
+
 		ArrayList<String> fileNames = IOTools.getSequenceFiles(inDir, suffix);
 		if(fileNames == null){
 			System.out.println("Something very wrong with this file path");
@@ -200,7 +203,12 @@ public class GeneralPairFile {
 				ca.addParameters(T);
 				ca.trimFastQFiles(sbatch, generalSbatchScript, inDir, fileName1, fileName2);
 				break;
-				
+			case BOWTIE2:
+				Bowtie2 bt2 = new Bowtie2();
+				bt2.addParameters(T);
+				bt2.Bowtie2File(generalSbatchScript, sbatch, new File(inDir).getAbsolutePath(), outDir,
+						fileName1,fileName2);
+				break;
 			case TOPHAT:
 				System.out.println("Not yet implemented");
 				break;
@@ -233,6 +241,9 @@ public class GeneralPairFile {
 			case CUTADAPT:
 				CutAdapt ca = new CutAdapt();
 				return ca.checkParameters(T);
+			case BOWTIE2:
+				Bowtie2 bt2 = new Bowtie2();
+				return bt2.addParameters(T);
 			case TOPHAT:
 				System.out.println("Not yet implemented");
 				return true;

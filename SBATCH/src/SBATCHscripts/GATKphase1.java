@@ -110,7 +110,9 @@ public class GATKphase1 {
 				"/sw/apps/bioinfo/GATK/2.5.2/");
 		this.suffix = Functions.getValue(T,"-suffix");
 		boolean allPresent = true;
+		if(!T.containsKey("-R")) return false;
 		this.Reference = Functions.getValue(T, "-R");
+		
 		File ref = new File(this.Reference);
 		this.Reference = ref.getAbsolutePath();
 		
@@ -365,8 +367,72 @@ public class GATKphase1 {
 		}
 	}
 
+	
+	
+	
+	public void GATKPhase1Sub(ExtendedWriter EW,
+			String outDir, String bamFile,  Hashtable<String, String> T,int memory) {
 
+		/*
+		 * for each sample (asumed to be in same dir)
+		 * 
+		 * lanes.bam <- merged lane.bams for sample dedup.bam <-
+		 * MarkDuplicates(lanes.bam) realigned.bam <- realign(dedup.bam) [with
+		 * known sites included if available] recal.bam <- recal(realigned.bam)
+		 * sample.bam <- recal.bam
+		 */
 
+		EW.println();
+		EW.println("cd " + outDir);
+
+		if (!IOTools.fileExists(outDir + "/" + bamFile + ".bai"))
+			Samtools.indexBamFile(bamFile, EW, true);
+
+		if (T.containsKey("-AddOrReplaceReadGroups")) {
+			String[] info = bamFile.split("_");
+			String Name, Nucleotide, Barcode, Lane;
+			Name = Nucleotide = Barcode = Lane = null;
+			if (info.length > 3) {
+				Name = info[0];
+				Nucleotide = info[1];
+				Barcode = info[2];
+				Lane = info[3];
+			}
+			String RGLB = Functions.getValue(T, "-RGLB", Lane);
+			String RGPL = Functions.getValue(T, "-RGPL", "illumina");
+			String RGPU = Functions.getValue(T, "-RGPU", Barcode);
+			String RGSM = Functions.getValue(T, "-RGSM", Name);
+			String RGID = Functions
+					.getValue(T, "-RGID", RGSM + "_" + RGPU + "_"
+							+ RGLB + "_" + Nucleotide + "_" + Lane);
+
+			bamFile = Picard.AddOrReplaceReadGroups(EW, bamFile, memory, picardDir, suffix, RGID, RGLB, RGPL, RGPU, RGSM, "coordinate")+"."+suffix;
+		}
+		
+		if (!IOTools.fileExists(outDir + "/" + bamFile + ".bai"))
+			Samtools.indexBamFile(bamFile, EW, true);
+		
+
+		if (T.containsKey("-ReassignOneMappingQuality")) {
+			bamFile = ReassignOneMappingQuality(EW, bamFile,
+					memory, this.GATKdir, this.Reference);
+		}
+		if (T.containsKey("-ReAlign"))
+			bamFile = ReAlign(EW, bamFile, memory, this.GATKdir,
+					this.Reference, knownSNPVCF,
+					knownIndelVCF, targetIntervals);
+		if (T.containsKey("-BQSR"))
+			bamFile = BQSR(EW, bamFile, memory, this.GATKdir,
+					this.Reference, knownSNPVCF,
+					knownIndelVCF);
+		if (T.containsKey("-BQSRprint"))
+			bamFile = BQSRprint(EW, bamFile, memory,
+					this.GATKdir, this.Reference);
+		if (T.containsKey("-ReduceReads"))
+			ReduceReads(EW, bamFile, memory, this.GATKdir,
+					this.Reference);
+	}
+	
 
 	public void GATKPhase1Sub(ExtendedWriter generalSbatchScript,
 			SBATCHinfo sbatch,  String outDir,

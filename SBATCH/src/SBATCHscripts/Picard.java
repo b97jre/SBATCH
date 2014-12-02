@@ -60,7 +60,7 @@ public class Picard {
 			allPresent = false;
 		}
 		picardDir = Functions.getValue(T, "-jDir",
-				"/bubo/sw/apps/bioinfo/picard/1.92/kalkyl/");
+				"/sw/apps/bioinfo/picard/1.92/milou/");
 		time = Functions.getValue(T, "-time", "3:00:00");
 
 		if (!T.containsKey("-picardDir"))
@@ -377,7 +377,7 @@ public class Picard {
 		// "Inter3-1_DNA_ATCACG_L005_R1_001fastq_Crubella_183.strict.sam"
 
 		if (suffix.indexOf("sam") > -1) {
-			bamFile = Samtools.sam2bam(EW, bamFile, -1, -1, false, true,
+			bamFile = Samtools.sam2bam(EW, bamFile, -1, -1,-1, false, true,
 					true, false, false);
 		}
 

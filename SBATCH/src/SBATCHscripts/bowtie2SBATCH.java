@@ -311,6 +311,10 @@ public class bowtie2SBATCH {
 
 	}
 
+	
+	
+	
+	
 	public void bowtie2FileStrict(ExtendedWriter EW, String indexFile,
 			String inFile1, String inFile2, String outFile,
 			String notPairedFile, int nrOfThreads) {

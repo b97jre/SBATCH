@@ -355,7 +355,7 @@ public class BWA {
 					+ "." + nameSpace + ".pe.sam");
 			if (compress) {
 				Samtools.sam2bam(EW, refFile + "." + nameSpace
-						+ ".pe.sam", 0, 0, true, true, true, true, true);
+						+ ".pe.sam", -1, -1,-1, true, true, true, true, true);
 			}
 		} else {
 			EW.println("bwa aln -t " + nrOfThreads + " " + refFile + " "
@@ -365,7 +365,7 @@ public class BWA {
 					+ nameSpace + ".se.sam");
 			if (compress) {
 				Samtools.sam2bam(EW, refFileBase + "." + nameSpace
-						+ ".se.sam", 0, 0, true, true, true, true, true);
+						+ ".se.sam", -1, -1,-1, true, true, true, true, true);
 			}
 		}
 
