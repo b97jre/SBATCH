@@ -323,7 +323,16 @@ public class GeneralOneFile {
 			String fileWithoutSuffix = Functions.getFileWithoutSuffix(forward,this.suffix);
 			String sbatchFile = inDir + "/scripts/" + sbatch.timeStamp
 					+ "_" +fileWithoutSuffix+ "_"+ program+".sbatch";
-			generalSbatchScript.println("sbatch " + sbatchFile);
+			if(!sbatch.isInteractive()){
+				generalSbatchScript.println("sbatch " + sbatchFile);
+				System.out.println("just checking if I get here");
+			}
+				else{
+				System.out.println("This means that the programs will not run as sbatch scripts and that no modules will be loaded.");
+				System.out.println("This  means that you will have to make sure that the program that you run are already installed in the PATH of your computer");
+				generalSbatchScript.println("sh " + sbatchFile);
+				
+			}
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 					sbatchFile));
 
