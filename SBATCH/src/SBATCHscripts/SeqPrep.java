@@ -41,6 +41,15 @@ public class SeqPrep {
 		filter.run(T);
 	}
 
+	public boolean addParameters(Hashtable<String, String> T){
+		boolean parametersFine = true;
+		codeFile = Functions.getValue(T, "-seqPrepFile",
+				"/gulo/glob/johanr/bin/SeqPrep");
+		return parametersFine;
+	}
+	
+	
+	
 	public void run(Hashtable<String, String> T) {
 
 		String inDir = null;
@@ -86,7 +95,7 @@ public class SeqPrep {
 		}
 
 		suffix = Functions.getValue(T, "-suffix", "fastq");
-		codeFile = Functions.getValue(T, "-codeFile",
+		codeFile = Functions.getValue(T, "-seqPrepFile",
 				"/gulo/glob/johanr/bin/SeqPrep");
 
 		if (allPresent)
@@ -170,7 +179,7 @@ public class SeqPrep {
 			String outDir, String forward, String reverse, String common) {
 
 		if (codeFile == null) {
-			codeFile = "/gulo/glob/johanr/bin/SeqPrep";
+			codeFile = "/glob/johanr/bin/SeqPrep";
 		}
 		EW.println();
 		EW.println();

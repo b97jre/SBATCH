@@ -42,8 +42,11 @@ public class TrimFastqFiles {
 			CA = new CutAdapt();
 			if(!CA.addParameters(T)) allParameters = false;
 		}
-		if(Functions.getValue(T, "-SeqPrep", "yes").toUpperCase().compareTo("YES") == 0)
+		if(Functions.getValue(T, "-SeqPrep", "yes").toUpperCase().compareTo("YES") == 0){
 			SP = new SeqPrep();
+			if(!SP.addParameters(T)) allParameters = false;
+		}
+
 		int phred = Functions.getInt(T, "-phred", -1);
 		if (phred == 33){
 			hiseq = false;
@@ -74,13 +77,22 @@ public class TrimFastqFiles {
 				IOTools.mkDir(finalDir + "/scripts");
 
 			String fileWithoutSuffix = Functions.getFileWithoutSuffix(forward,this.suffix);
-			String sbatchFile = finalDir + "/scripts/" + sbatch.timeStamp
-					+ "_" + inDirName +"_"+fileWithoutSuffix+ "_TrimFastqFiles.sbatch";
-			generalSbatchScript.println("sbatch " + sbatchFile);
+			String sbatchFile = null;
+			if(sbatch.interactive){
+				sbatchFile = finalDir + "/scripts/" + sbatch.timeStamp
+					+ "_" + inDirName +"_"+fileWithoutSuffix+ "_TrimFastqFiles.sh";
+				generalSbatchScript.println("sh " + sbatchFile);
+			}
+			else{
+				sbatchFile = finalDir + "/scripts/" + sbatch.timeStamp
+						+ "_" + inDirName +"_"+fileWithoutSuffix+ "_TrimFastqFiles.sbatch";
+				generalSbatchScript.println("sbatch " + sbatchFile);
+			}
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
 					sbatchFile));
 
-			sbatch.printSBATCHinfo(EW, inDirName, sbatch.timeStamp, 0, fileWithoutSuffix
+			if(!sbatch.interactive)
+				sbatch.printSBATCHinfo(EW, inDirName, sbatch.timeStamp, 0, fileWithoutSuffix
 					+ "_trimFastqFiles");
 
 			// SeqPrep step merging sequences
@@ -111,6 +123,12 @@ public class TrimFastqFiles {
 
 			// SeqPrep step merging sequences
 			if (CA!= null) {
+				if(CA.split)
+					CA.addCutAdaptStep(EW, 
+							inDir, inDir,
+							forward, 
+							fileWithoutSuffix+".cutAdapt.fastq.gz",fileWithoutSuffix+".untrimmed.cutAdapt.fastq.gz");
+				else
 					CA.addCutAdaptStep(EW, 
 							inDir, 
 							forward, 
@@ -121,6 +139,9 @@ public class TrimFastqFiles {
 			// FastQCstep
 			FQC.FastQCSample(EW, inDir,forward);
 			FQC.FastQCSample(EW, inDir, fileWithoutSuffix+".cutAdapt.fastq.gz");
+			if(CA.split)
+				FQC.FastQCSample(EW, inDir, fileWithoutSuffix+".untrimmed.cutAdapt.fastq.gz");
+				
 
 	}	
 
@@ -136,14 +157,29 @@ public class TrimFastqFiles {
 				IOTools.mkDir(finalDir + "/scripts");
 
 			String commonName = Functions.getCommonPrefix(forward, reverse);
-			String sbatchFile = finalDir + "/scripts/" + sbatch.timeStamp
-					+ "_" + inDirName +"_"+commonName+ "_TrimFastqFiles.sbatch";
-			generalSbatchScript.println("sbatch " + sbatchFile);
-			ExtendedWriter EW = new ExtendedWriter(new FileWriter(
-					sbatchFile));
-
-			sbatch.printSBATCHinfo(EW, inDir, sbatch.timeStamp, 0, commonName
-					+ "_trimFastqFiles");
+			String sbatchFile = null;
+			ExtendedWriter EW = null;
+			
+			if(sbatch.interactive){
+				sbatchFile = finalDir + "/scripts/" + sbatch.timeStamp
+						+ "_" + inDirName +"_"+commonName+ "_TrimFastqFiles.sh";
+				generalSbatchScript.println("sh " + sbatchFile);
+				EW = new ExtendedWriter(new FileWriter(
+						sbatchFile));
+				sbatch.printSHELLinfo(EW);
+			}
+			else{
+				sbatchFile = finalDir + "/scripts/" + sbatch.timeStamp
+						+ "_" + inDirName +"_"+commonName+ "_TrimFastqFiles.sbatch";
+				generalSbatchScript.println("sbatch " + sbatchFile);
+				EW = new ExtendedWriter(new FileWriter(
+						sbatchFile));
+				sbatch.printSBATCHinfo(EW, inDir, sbatch.timeStamp, 0, commonName
+						+ "_trimFastqFiles");
+			}
+				
+			
+		
 
 			// SeqPrep step merging sequences
 			if (SP != null) {

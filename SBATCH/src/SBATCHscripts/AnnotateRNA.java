@@ -5,16 +5,12 @@ import general.ExtendedWriter;
 import general.Functions;
 import general.IOTools;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Hashtable;
 
-import Sequence.FastaSequences;
-import Sequence.Generate;
 
 public class AnnotateRNA {
 
@@ -72,7 +68,6 @@ public class AnnotateRNA {
 	public void run(Hashtable<String, String> T,SBATCHinfo sbatch,String inFileBody){
 
 			ExtendedWriter annotateSbatchScript = sbatch.printSBATCHInfoSTART("annotateRNA",inDir,0,null);
-			String sbatchScriptFile = sbatch.getSbatchFileName("annotateRNA",inDir,0);
 			
 			// Remove duplicates 
 			annotateSbatchScript.println();

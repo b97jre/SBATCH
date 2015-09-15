@@ -37,9 +37,6 @@ public class HMMER {
 		System.out.println(Functions.fixedLength("--pfamDB <pathTopfamDB>",30)+"/glob/johanr/references/Pfam/PfamAB.hmm is default");
 		System.out.println("");
 		
-		
-		
-		
 	}
 
 	

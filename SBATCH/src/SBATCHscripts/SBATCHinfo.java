@@ -29,6 +29,7 @@ public class SBATCHinfo {
 
 	String jarPath;
 	String fileParserJarFile;
+	String HTStoolsJarFile;
 	String programName;
 
 
@@ -52,6 +53,7 @@ public class SBATCHinfo {
 
 		SBATCH.jarPath = SBATCHinfo.class.getProtectionDomain().getCodeSource().getLocation().getPath();
 		SBATCH.fileParserJarFile = Functions.getValue(T, "-fileParserJarFile","/glob/johanr/bin/FileParser.jar");
+		SBATCH.HTStoolsJarFile = Functions.getValue(T, "-HTStoolsJarFile","/glob/johanr/bin/HTStools.jar");
 
 		//System.out.println("The path to the jar file is : "+SBATCH.jarPath);
 		if (!SBATCH.run(T)) {
@@ -64,6 +66,7 @@ public class SBATCHinfo {
 
 	public enum Programs {
 
+		ANNOTATION,
 		STAR,
 		PICARD,
 		GATK,
@@ -121,9 +124,14 @@ public class SBATCHinfo {
 				help();
 				return false;
 			}
-		}else
+		}else{
 			this.interactive = true;
-
+			System.out.println("You have set the interactive flag.");
+			System.out.println("This means that the programs will not run as sbatch scripts but instead they will be created as shell scripts");
+			System.out.println("As a consecuense no modules will be loaded and that you will have to make sure that the program that you run are already installed in the PATH of your computer");
+			System.out.println("This is still under development and may not work for all programs.");
+			
+		}
 		core = Functions.getInt(T,"-core", 1);
 
 		memory = Functions.getInt(T,"-memory",8);
@@ -359,6 +367,10 @@ public class SBATCHinfo {
 		case ARGOT2:
 			Argot2 argot2 = new Argot2();
 			argot2.run(T,this);
+			break;
+		case ANNOTATION:
+			Annotation annotation = new Annotation();
+			annotation.run(T,this);
 			break;
 		case ANNOTATEPROTEIN:
 			AnnotateAASequences annotateAA = new AnnotateAASequences();
@@ -847,6 +859,13 @@ public class SBATCHinfo {
 
 	}
 
+	
+	public void printSHELLinfo(ExtendedWriter EW) {
+
+
+		EW.println("#! /bin/bash -l");
+	}
+	
 	private void printSBATCHinfoCore(ExtendedWriter EW, String directory,
 			String timestamp, String ID, String program) {
 
@@ -872,7 +891,7 @@ public class SBATCHinfo {
 				+ "_SLURM_Job_id=%j.stdout.txt");
 
 		if (email != null) {
-			EW.println("#SBATCH --mail-type=All");
+			EW.println("#SBATCH --mail-type=FAIL");
 			EW.println("#SBATCH --mail-user=" + email);
 		}
 		if(this.afterany != null){
@@ -928,7 +947,7 @@ public class SBATCHinfo {
 				+ "_SLURM_Job_id=%j.stdout.txt");
 
 		if (email != null) {
-			EW.println("#SBATCH --mail-type=All");
+			EW.println("#SBATCH --mail-type=FAIL");
 			EW.println("#SBATCH --mail-user=" + email);
 		}
 		if(this.afterany != null){

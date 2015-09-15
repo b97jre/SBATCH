@@ -75,8 +75,6 @@ public class AnnotateAASequences {
 			EW.close();
 			
 			
-			ArrayList <Integer> Numbers = sbatch.startSbatchScripts(inDir
-					+ "/scripts/" + sbatch.getTimeStamp() + ".annotateAAs.sh");
 			System.out.println();
 			System.out.println();
 			System.out

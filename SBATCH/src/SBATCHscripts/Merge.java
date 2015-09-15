@@ -226,8 +226,7 @@ public class Merge {
 				IPS.merge(inDir, outDir, this.fileNames, outFile);
 				break;
 			case HMMER:
-				HMMER hmmer = new HMMER(T);
-				hmmer.merge(inDir, outDir, this.fileNames, outFile);
+				HMMER.merge(inDir, outDir, this.fileNames, outFile);
 				break;
 					
 			case BLAT:

@@ -31,6 +31,7 @@ public class CutAdapt {
 	boolean hiseq;
 	boolean split;
 	String untrimmedFileName;
+	String CutAdaptFile;
 
 	public static void main(String[] args) {
 
@@ -49,6 +50,7 @@ public class CutAdapt {
 		hiseq = false;
 		threeAdapters = null;
 		untrimmedFileName = null;
+		CutAdaptFile =  "/sw/apps/bioinfo/cutadapt/1.3/kalkyl/bin/cutadapt";
 
 	}
 
@@ -60,8 +62,8 @@ public class CutAdapt {
 		System.out.println(Functions.fixedLength("-q <PhredScoreQualtiy>", 30)+"");
 		System.out.println(Functions.fixedLength("-m <MinimumLength>",30)+"");
 		System.out.println(Functions.fixedLength("-untrimmed-output <untrimedFileName>",30)+"");
-		
-		
+
+
 		System.out.println("");
 
 		System.out.println("For more details concerning the cutadapt flags see cutadapt manual");
@@ -83,12 +85,17 @@ public class CutAdapt {
 		cutoff = Functions.getInt(T, "-q", -1);
 		length = Functions.getInt(T, "-m", -1);
 		overlap = Functions.getInt(T, "-overlap", 3);
-		
+
 		if(T.containsKey("-untrimmedFileName")){
 			this.split = true;
 			this.untrimmedFileName = Functions.getValue(T, "-untrimmedFileName");
 		}
-		
+
+		if(T.containsKey("-cutAdaptFile")){
+			this.CutAdaptFile = Functions.getValue(T, "-cutAdaptFile");
+		}
+
+
 
 		if(length >-1 || cutoff > -1 || threeAdapters != null || otherAdapters != null) return true;
 		help();
@@ -98,7 +105,7 @@ public class CutAdapt {
 
 	public static boolean checkParameters(Hashtable<String, String> T){
 		String threePrimeAdaptersFile = Functions.getValue(T, "-a", null);
-	
+
 		String allAdaptersFile = Functions.getValue(T, "-b",  null);
 		int cutoff = Functions.getInt(T, "-q", -1);
 		int length = Functions.getInt(T, "-m", -1);
@@ -110,12 +117,12 @@ public class CutAdapt {
 
 	}
 
-	
+
 	public void trimFastQFile(SBATCHinfo sbatch,
 			ExtendedWriter generalSbatchScript, String inDir, String outDir, String inFile, String suffix) {
 		String finalDir = inDir;
 		String inDirName = new File(inDir).getName();
-		
+
 		String fileBase = Functions.getFileWithoutSuffix(inFile, suffix);
 		String outFile = fileBase+".cutAdapt."+suffix;
 		if(split && this.untrimmedFileName == null){	
@@ -134,7 +141,7 @@ public class CutAdapt {
 					sbatchFile));
 
 			sbatch.printSBATCHinfo(EW, inDir, sbatch.timeStamp,inFile, "CutAdapt");
-			
+
 			if(split)
 				addCutAdaptStep(EW, 
 						inDir,
@@ -147,16 +154,16 @@ public class CutAdapt {
 						inDir,
 						outDir,
 						inFile, 
-						outFile);
-			
+						outFile, null);
+
 
 			FastQC FQC = new FastQC();
-				// FastQCstep
+			// FastQCstep
 			FQC.FastQCSample(EW, inDir,inFile);
 			FQC.FastQCSample(EW, inDir, fileBase+".cutAdapt."+suffix);
 			if(split)
-			FQC.FastQCSample(EW, inDir, fileBase+".cutAdapt.Untrimmed."+suffix);
-			
+				FQC.FastQCSample(EW, inDir, fileBase+".cutAdapt.Untrimmed."+suffix);
+
 
 			EW.println();
 			EW.flush();
@@ -166,8 +173,8 @@ public class CutAdapt {
 			E.printStackTrace();
 		}
 	}	
-	
-	
+
+
 	public void trimFastQFile(SBATCHinfo sbatch,
 			ExtendedWriter generalSbatchScript, String inDir, String outDir, String inFile, String outFile, String untrimmedFile) {
 		String finalDir = inDir;
@@ -187,14 +194,14 @@ public class CutAdapt {
 			sbatch.printSBATCHinfo(EW, inDir, sbatch.timeStamp,inFile, "CutAdapt");
 
 			addCutAdaptStep(EW, 
-							inDir,
-							outDir,
-							inFile, 
-							outFile,
-							untrimmedFile);
+					inDir,
+					outDir,
+					inFile, 
+					outFile,
+					untrimmedFile);
 
 			FastQC FQC = new FastQC();
-				// FastQCstep
+			// FastQCstep
 			FQC.FastQCSample(EW, inDir,inFile);
 			FQC.FastQCSample(EW, inDir, outFile);
 			if(untrimmedFile != null){
@@ -209,8 +216,8 @@ public class CutAdapt {
 			E.printStackTrace();
 		}
 	}	
-	
-	
+
+
 	public void trimFastQFiles(SBATCHinfo sbatch,
 			ExtendedWriter generalSbatchScript, String inDir, String forward, String reverse) {
 		String finalDir = inDir;
@@ -231,14 +238,14 @@ public class CutAdapt {
 			sbatch.printSBATCHinfo(EW, inDir, sbatch.timeStamp,commonName, "CutAdapt");
 
 			addCutAdaptPairedReadsStep(EW, 
-							inDir, 
-							forward, 
-							reverse, 
-							commonName+".cutAdapt.1.fastq.gz", 
-							commonName+".cutAdapt.2.fastq.gz");
+					inDir, 
+					forward, 
+					reverse, 
+					commonName+".cutAdapt.1.fastq.gz", 
+					commonName+".cutAdapt.2.fastq.gz");
 
 			FastQC FQC = new FastQC();
-				// FastQCstep
+			// FastQCstep
 			FQC.FastQCSample(EW, inDir,forward);
 			FQC.FastQCSample(EW, inDir, reverse);
 			FQC.FastQCSample(EW, inDir, commonName+".cutAdapt.1.fastq.gz");
@@ -252,10 +259,12 @@ public class CutAdapt {
 			E.printStackTrace();
 		}
 	}	
-	
-	
+
+
 	public void addCutAdaptStep(ExtendedWriter EW, String inDir,String outDir,
 			String inFile, String outFile,String untrimmedFile) {
+
+
 		EW.println();
 		EW.println();
 		EW.println("#############################################################################################################");
@@ -264,7 +273,7 @@ public class CutAdapt {
 		EW.println();
 		EW.println();
 		EW.println();
-		EW.print("/sw/apps/bioinfo/cutadapt/1.3/kalkyl/bin/cutadapt");
+		EW.print(CutAdaptFile+" ");
 
 		if (cutoff > -1)
 			EW.print(" -q " + cutoff + " ");
@@ -283,9 +292,10 @@ public class CutAdapt {
 				}
 			}
 		}
-		EW.print(" --untrimmed-output=" + outDir + "/" + untrimmedFile);
+		if(untrimmedFile != null)
+			EW.print(" --untrimmed-output=" + outDir + "/" + untrimmedFile);
 		EW.print(" -o " + outDir + "/" + outFile);
-		
+
 		EW.println(" " + inDir + "/" + inFile);
 		EW.println();
 		EW.println("#############################################################################################################");
@@ -295,88 +305,16 @@ public class CutAdapt {
 		EW.println();
 
 	}
-	
-	public void addCutAdaptStep(ExtendedWriter EW, String inDir,String outDir,
-			String inFile, String outFile) {
-		EW.println();
-		EW.println();
-		EW.println("#############################################################################################################");
-		EW.println("## Running cutadapt 1.3 START");
-		EW.println("#############################################################################################################");
-		EW.println();
-		EW.println();
-		EW.println();
-		EW.print("/sw/apps/bioinfo/cutadapt/1.3/kalkyl/bin/cutadapt");
-
-		if (cutoff > -1)
-			EW.print(" -q " + cutoff + " ");
-		if (length > -1)
-			EW.print(" --minimum-length " + length + " ");
-		if (threeAdapters != null ||  otherAdapters != null){
-			EW.print(" --overlap=" + this.overlap + " ");
-			if (threeAdapters != null) {
-				for (int j = 0; j < threeAdapters.size(); j++) {
-					EW.print(" -a " + threeAdapters.get(j));
-				}
-			}
-			if (otherAdapters != null) {
-				for (int j = 0; j < otherAdapters.size(); j++) {
-					EW.print(" -b " + otherAdapters.get(j));
-				}
-			}
-		}
-		EW.print(" -o " + inDir + "/" + outFile);
-		EW.println(" " + inDir + "/" + inFile);
-		EW.println();
-		EW.println("#############################################################################################################");
-		EW.println("## running cutadapt DONE");
-		EW.println("#############################################################################################################");
-		EW.println();
-		EW.println();
-
-	}
-	
 
 
-	
-	
+
+
 	public void addCutAdaptStep(ExtendedWriter EW, String inDir,
 			String inFile, String outFile) {
-		EW.println();
-		EW.println();
-		EW.println("#############################################################################################################");
-		EW.println("## Running cutadapt 1.3 START");
-		EW.println("#############################################################################################################");
-		EW.println();
-		EW.println();
-		EW.println();
-		EW.print("/sw/apps/bioinfo/cutadapt/1.3/kalkyl/bin/cutadapt");
 
-		if (cutoff > -1)
-			EW.print(" -q " + cutoff + " ");
-		if (length > -1)
-			EW.print(" --minimum-length " + length + " ");
-		if (threeAdapters != null ||  otherAdapters != null){
-			EW.print(" --overlap=" + this.overlap + " ");
-			if (threeAdapters != null) {
-				for (int j = 0; j < threeAdapters.size(); j++) {
-					EW.print(" -a " + threeAdapters.get(j));
-				}
-			}
-			if (otherAdapters != null) {
-				for (int j = 0; j < otherAdapters.size(); j++) {
-					EW.print(" -b " + otherAdapters.get(j));
-				}
-			}
-		}
-		EW.print(" -o " + inDir + "/" + outFile);
-		EW.println(" " + inDir + "/" + inFile);
-		EW.println();
-		EW.println("#############################################################################################################");
-		EW.println("## running cutadapt DONE");
-		EW.println("#############################################################################################################");
-		EW.println();
-		EW.println();
+		String extra = null;
+		addCutAdaptStep(EW, inDir,inDir,
+				inFile, outFile, extra);
 
 	}
 
@@ -412,7 +350,7 @@ public class CutAdapt {
 
 		EW.println();
 		// First run cutadapt -a ADAPTER_FWD --minimum-length 20 --paired-output tmp.2.fastq -o tmp.1.fastq reads.1.fastq reads.2.fastq
-		EW.print("/sw/apps/bioinfo/cutadapt/1.3/kalkyl/bin/cutadapt ");
+		EW.print(CutAdaptFile+" ");
 		if (cutoff > -1)
 			EW.print(" -q " + cutoff + " ");
 		if (length > -1)
@@ -438,7 +376,7 @@ public class CutAdapt {
 
 		EW.println();
 		// Second run cutadapt -a ADAPTER_REV --minimum-length 20 --paired-output trimmed.1.fastq -o trimmed.2.fastq tmp.2.fastq tmp.1.fastq
-		EW.print("/sw/apps/bioinfo/cutadapt/1.3/kalkyl/bin/cutadapt ");
+		EW.print(CutAdaptFile+" ");
 		if (cutoff > -1)
 			EW.print(" -q " + cutoff + " ");
 		if (length > -1)
@@ -492,4 +430,3 @@ public class CutAdapt {
 		return SequenceFiles;
 	}
 }
- 

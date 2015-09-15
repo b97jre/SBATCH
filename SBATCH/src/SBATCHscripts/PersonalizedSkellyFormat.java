@@ -35,15 +35,15 @@ public class PersonalizedSkellyFormat {
 	public void help(){
 
 		System.out.println("Mandatory values for phasing RNA reads based on DNA SNPs:");
-		System.out.println(Functions.fixedLength("-R <ReferenceFile.fa>", 50)+"non-personalized Reference fasta file");
-		System.out.println(Functions.fixedLength("-phasedVcfFile <vcfFile.vcf>", 50)+"Vcf file with phased SNPs and ReferenceFile annotation");
-		System.out.println(Functions.fixedLength("-personalizedReference <Personalized ReferenceFile.fa>", 50)+"personalized Reference fasta file based on phasedVcfFile (two merged Haplo Genomes)");
-		System.out.println(Functions.fixedLength("-bam <mappedReads.bam>", 50)+"bamFile with reads mapped to personalized Reference");
-		System.out.println(Functions.fixedLength("-sample <Sample name>", 50)+"SampleName in VCF file that created personalized vcf File");
-		System.out.println(Functions.fixedLength("-fatherSuffix <Suffix of contigNames for father in personalized Genome>", 50)+"Only get skelly for this sample");
-		System.out.println(Functions.fixedLength("-motherSuffix <Suffix of contigNames for mother in personalized Genome>", 50)+"Only get skelly for this sample");
+		System.out.println(Functions.fixedLength("-R <ReferenceFile.fa>", 100)+"non-personalized Reference fasta file");
+		System.out.println(Functions.fixedLength("-phasedVcfFile <vcfFile.vcf>", 100)+"Vcf file with phased SNPs and ReferenceFile annotation");
+		System.out.println(Functions.fixedLength("-personalizedReference <Personalized ReferenceFile.fa>", 100)+"personalized Reference fasta file based on phasedVcfFile (two merged Haplo Genomes)");
+		System.out.println(Functions.fixedLength("-bam <mappedReads.bam>", 100)+"bamFile with reads mapped to personalized Reference");
+		System.out.println(Functions.fixedLength("-sample <Sample name>", 100)+"SampleName in VCF file that created personalized vcf File");
+		System.out.println(Functions.fixedLength("-fatherSuffix <Suffix of contigNames for father in personalized Genome>", 100)+"Only get skelly for this sample");
+		System.out.println(Functions.fixedLength("-motherSuffix <Suffix of contigNames for mother in personalized Genome>", 100)+"Only get skelly for this sample");
 		
-		System.out.println(Functions.fixedLength("-annotation <annotation.bed>", 50)+"Bed file with annotation");
+		System.out.println(Functions.fixedLength("-annotation <annotation.bed>", 100)+"Bed file with annotation");
 
 
 		System.out.println();

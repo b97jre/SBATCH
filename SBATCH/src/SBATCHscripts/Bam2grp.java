@@ -2,11 +2,8 @@ package SBATCHscripts;
 
 import general.ExtendedWriter;
 import general.Functions;
-import general.IOTools;
 
 import java.io.File;
-import java.io.FileWriter;
-import java.util.ArrayList;
 import java.util.Hashtable;
 
 public class Bam2grp {
@@ -43,7 +40,7 @@ public class Bam2grp {
 	
 	
 
-	public void bam2wigFile(ExtendedWriter EW, String bamFileName,
+	public void bam2wigFile(ExtendedWriter EW,String jarFile,  String bamFileName,
 			String finalOutDir) {
 
 			
@@ -54,7 +51,7 @@ public class Bam2grp {
 			EW.println("module load samtools");
 			EW.println("cd " + finalOutDir);
 
-			EW.println("samtools view "+bamFileName +"| java -jar /glob/johanr/bin/HTStools.jar  -p genomeCov -ref "+this.reference+" -o "+ fileNameString);
+			EW.println("samtools view "+bamFileName +"| java -jar "+jarFile+"  -p genomeCov -ref "+this.reference+" -o "+ fileNameString);
 			EW.flush();
 			EW.close();
 

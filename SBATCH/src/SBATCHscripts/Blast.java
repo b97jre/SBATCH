@@ -10,7 +10,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Hashtable;
 
 
@@ -156,7 +155,6 @@ public class Blast {
 			}
 			ArrayList<Integer> jobIDs = sbatch.startSbatchScripts(sbatchScripts);
 			String file = this.getMergesbatchScript(sbatch, jobIDs, inDir+"/tmp", outDir, null);
-			Integer mergeJobID = sbatch.startSbatchScript(file);
 
 			try {
 				ExtendedWriter EW = new ExtendedWriter(new FileWriter(outDir
@@ -362,30 +360,30 @@ public class Blast {
 		}
 	}
 
-
-	private void merge(String inDir, String outDir, String outFile) {
-
-		System.out.println("merging blast files in folder " + inDir + " to file "
-				+ outDir+"/"+outFile);
-
-		try {
-			ExtendedWriter EW = new ExtendedWriter(new FileWriter(outDir + "/"
-					+ outFile));
-			for (int i = 0; i < tmpFiles.size(); i++) {
-				System.out.println(" now adding file " + tmpFiles.get(i));
-				ExtendedReader ER = new ExtendedReader(new FileReader(inDir + "/"
-						+ tmpFiles.get(i)));
-				while (ER.more()) {
-					EW.println(ER.readLine());
-				}
-				ER.close();
-			}
-			EW.flush();
-			EW.close();
-		} catch (Exception E) {
-			E.printStackTrace();
-		}
-	}
+//
+//	private void merge(String inDir, String outDir, String outFile) {
+//
+//		System.out.println("merging blast files in folder " + inDir + " to file "
+//				+ outDir+"/"+outFile);
+//
+//		try {
+//			ExtendedWriter EW = new ExtendedWriter(new FileWriter(outDir + "/"
+//					+ outFile));
+//			for (int i = 0; i < tmpFiles.size(); i++) {
+//				System.out.println(" now adding file " + tmpFiles.get(i));
+//				ExtendedReader ER = new ExtendedReader(new FileReader(inDir + "/"
+//						+ tmpFiles.get(i)));
+//				while (ER.more()) {
+//					EW.println(ER.readLine());
+//				}
+//				ER.close();
+//			}
+//			EW.flush();
+//			EW.close();
+//		} catch (Exception E) {
+//			E.printStackTrace();
+//		}
+//	}
 
 
 	public void mergeXML(String inDir, String outDir, String outFile) {

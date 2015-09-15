@@ -138,16 +138,28 @@ public class GeneralOneFile {
 			EW.close();
 
 			//sbatch.startSbatchScripts(ShellScriptFileName);
-
-			System.out.println("All the sbatch scripts runned have been gathered here");
-			System.out.println(ShellScriptFileName);
-
-			if(!T.containsKey("-q")){	
-				System.out.println("All scripts have been started. If you want to start them your self add extra flag -q");
-				ArrayList<Integer> processes = sbatch.startSbatchScripts(ShellScriptFileName);
-
-				return processes;
+			if(sbatch.isInteractive()){
+					System.out.println("All the shell scripts that have been created has been gathered here");
+					System.out.println(ShellScriptFileName);
+					System.out.println("Type line below to start the programs:");
+					System.out.println("sh "+ShellScriptFileName);
+					
 			}
+			else{
+				System.out.println("All the sbatch scripts runned have been gathered here");
+				System.out.println(ShellScriptFileName);
+
+				if(!T.containsKey("-q")){	
+					System.out.println("All scripts have been started. If you want to start them your self add extra flag -q");
+					ArrayList<Integer> processes = sbatch.startSbatchScripts(ShellScriptFileName);
+					return processes;
+				}else{
+					System.out.println("Type line below to initiate sbatch scripts:");
+					System.out.println("sh "+ShellScriptFileName);
+					
+				}
+			}
+			return null;		
 
 		} catch (Exception E) {
 			E.printStackTrace();
@@ -236,7 +248,7 @@ public class GeneralOneFile {
 				EW = printSBATCHinfoSTART(sbatch,generalSbatchScript,outDir,fileName, programName);
 				Bam2grp B2G = new Bam2grp();
 				B2G.setParameters(T);
-				B2G.bam2wigFile(EW, fileName, outDir);	
+				B2G.bam2wigFile(EW,sbatch.HTStoolsJarFile ,fileName, outDir);	
 				printSBATCHinfoEND(EW,programName);
 				break;
 			case STAR:
@@ -325,11 +337,8 @@ public class GeneralOneFile {
 					+ "_" +fileWithoutSuffix+ "_"+ program+".sbatch";
 			if(!sbatch.isInteractive()){
 				generalSbatchScript.println("sbatch " + sbatchFile);
-				System.out.println("just checking if I get here");
 			}
 				else{
-				System.out.println("This means that the programs will not run as sbatch scripts and that no modules will be loaded.");
-				System.out.println("This  means that you will have to make sure that the program that you run are already installed in the PATH of your computer");
 				generalSbatchScript.println("sh " + sbatchFile);
 				
 			}
