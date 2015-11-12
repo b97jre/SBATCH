@@ -146,15 +146,18 @@ public class Blast {
 		
 		if (T.containsKey("-length")) {
 			ArrayList <String> sbatchScripts = new ArrayList<String>();
+			
 			int peptidedPerFile = Functions.getInt(T, "-length", 20000);
-			ArrayList<String> fileNames = RNAfunctions.splitSize(inDir, fileName, peptidedPerFile, suffix);
+			ArrayList<String> fileNames = RNAfunctions.splitSize(outDir,inDir, fileName, peptidedPerFile, suffix);
+			
 			for (int i = 0; i < fileNames.size(); i++) {
 
-				sbatchScripts.add(runBlastFile(generalSbatchScript, sbatch, timestamp, inDir+"/tmp",
-						inDir+"/tmp", fileNames.get(i), suffix));
+				sbatchScripts.add(runBlastFile(generalSbatchScript, sbatch, timestamp, outDir+"/tmp",
+						outDir+"/tmp", fileNames.get(i), suffix));
 			}
 			ArrayList<Integer> jobIDs = sbatch.startSbatchScripts(sbatchScripts);
-			String file = this.getMergesbatchScript(sbatch, jobIDs, inDir+"/tmp", outDir, null);
+			String file = this.getMergesbatchScript(sbatch, jobIDs, outDir+"/tmp", outDir, null);
+			sbatch.startSbatchScript(file);
 
 			try {
 				ExtendedWriter EW = new ExtendedWriter(new FileWriter(outDir
@@ -218,7 +221,7 @@ public class Blast {
 			String suffix) {
 		try {
 			if(!IOTools.isDir(outDir + "/scripts/"))
-					IOTools.mkDir(outDir + "/scripts/");
+					IOTools.mkDirs(outDir + "/scripts/");
 			String outFile = IOTools.getFileBase(fileName, suffix)+ "." + refName + ".blast";
 			String sbatchFileName = outDir + "/scripts/" + timestamp + "_"
 					+ IOTools.getFileBase(fileName, suffix) + "_blast.sbatch";
@@ -233,12 +236,12 @@ public class Blast {
 
 			EW.println("# loading prerequistit modules at uppmax");
 			EW.println("module load bioinfo-tools");
-			EW.println("module load blast/2.2.28+");
+			EW.println("module load blast/2.2.31+");
 
 			EW.println("# going to correct directory");
 			EW.println("cd " + inDir);
 			EW.println(Blast.BlastCommand(blastProgram,fileName, blastDB, outFile,
-					Evalue,this.outputFormat,this.max_target_seqs,this.extra));
+					Evalue,this.outputFormat,this.max_target_seqs,this.extra,sbatch.getNrOfCores()));
 			if(this.outputFormat.contains("5")){
 				EW.println("mv "+outFile+".tmp "+outDir+"/"+outFile+".xml");
 				this.tmpFiles.add(outFile+".xml");
@@ -429,17 +432,22 @@ public class Blast {
 		}
 	}
 
-
-
 	public static String BlastCommand(String blastProgram,String inFile, String blastDB,
 			String outFile, double Evalue, String outFormat, int max_target_seqs, String extra) {
+		return BlastCommand(blastProgram,inFile, blastDB,
+				outFile, Evalue, outFormat, max_target_seqs, extra, 1);
+	}
+	public static String BlastCommand(String blastProgram,String inFile, String blastDB,
+			String outFile, double Evalue, String outFormat, int max_target_seqs, String extra,int nrOfThreads) {
 
 		String blastCommand = 
 		blastProgram
 				+" -query " + inFile  
 				+" -db " + blastDB
 				+" -outfmt \""+outFormat+"\""
-				+" -out " +outFile +".tmp";
+				+" -out " +outFile +".tmp"
+				+" -num_threads "+ nrOfThreads;
+
 		if(extra != null)
 			blastCommand = blastCommand+" "+extra;
 		else{

@@ -22,6 +22,7 @@ public class STAR {
 	String referenceDir;
 	String suffix;
 	int nrOfThreads;
+	long memory;
 
 	String parameterFile;	
 	
@@ -89,6 +90,10 @@ public class STAR {
 		this.sam2bam = true;
 
 		this.nrOfThreads = sbatch.getNrOfCores();
+		this.memory = sbatch.getMemoryPadded();
+		this.memory = memory *1000000000;
+				
+		
 		this.suffix = Functions.getValue(T, "-suffix", "fastq.gz");
 
 		if (T.containsKey("-parameterFile")) {
@@ -108,6 +113,13 @@ public class STAR {
 		String commonName = forward;
 		if(reverse!= null)
 			commonName = Functions.getCommonPrefix(forward, reverse);
+		STARFile( generalSbatchScript,  sbatch,  inDir,  outDir, 
+				forward,  reverse,  commonName);
+		
+	}
+	
+	public void STARFile(ExtendedWriter generalSbatchScript, SBATCHinfo sbatch, String inDir, 
+			String outDir, String forward, String reverse, String commonName) {
 
 		File refDir = new File(referenceDir);
 		String refName = refDir.getName();
@@ -121,7 +133,6 @@ public class STAR {
 			IOTools.mkDir(outDir + "/scripts");
 			
 		try {
-			
 			String sbatchFileName = outDir + "/scripts/" + sbatch.timeStamp+"_"+commonName+"_"+refName
 					+ "_STAR.sbatch";
 			if (!sbatch.interactive)
@@ -133,20 +144,15 @@ public class STAR {
 			ExtendedWriter EW = new ExtendedWriter(new FileWriter(sbatchFileName));
 			sbatch.printSBATCHinfo(EW, outDir, sbatch.timeStamp, commonName, "STAR");
 			
-			
-			
 			EW.println();
 			EW.println("cd " + outDir);
 			if(reverse != null){
 				STARCommand(EW, inDir + "/" + forward,
-						inDir + "/" + reverse);
+						inDir + "/" + reverse, commonName);
 			}else{
 				STARCommand(EW, inDir + "/" + forward,null);
 			}
-			if (sam2bam) {
-				Samtools.sam2bam(EW, outDir + "/Aligned.out.sam", -1, -1, -1, 
-						true, true, true, true, true);
-			}
+			Samtools.index(EW, outDir + "/"+commonName+".Aligned.sortedByCoord.out.bam");
 
 
 			EW.flush();
@@ -181,29 +187,37 @@ public class STAR {
 		}else{
 			STARCommand(EW, inDir + "/" + forward,null);
 		}
+			
 		if (sam2bam) {
 			Samtools.sam2bam(EW, outDir + "/Aligned.out.sam", -1, -1, -1,
 					true, true, true, true, true);
 		}
 	}
 	
-	
 	public void STARCommand(ExtendedWriter EW,
 			 String inFile1, String inFile2) {
+		STARCommand( EW, inFile1,  inFile2, Functions.getCommonPrefix(inFile1,  inFile2));
+	}
+	public void STARCommand(ExtendedWriter EW,
+			 String inFile1, String inFile2, String nameBase) {
 
-		String STARcommand = "/sw/apps/bioinfo/star/2.3.1o/milou/bin/STAR ";
+		String STARcommand = "star ";
 		STARcommand += " --genomeDir " + this.referenceDir;
 		STARcommand += " --readFilesIn " + inFile1;
 		if (inFile2 != null) {
 			STARcommand += " " + inFile2;
 		}
 		STARcommand += " --runThreadN " + nrOfThreads;
+		
+		STARcommand += " --outFileNamePrefix " + nameBase+".";
 		// if(!strandSpecifik) STARcommand +=
 		// " --outSAMstrandField intronMotif ";
 		if (suffix.indexOf("gz") > 0)
 			STARcommand += " --readFilesCommand zcat ";
 		if (suffix.indexOf("bz2") > 0)
 			STARcommand += " --readFilesCommand bzcat ";
+		STARcommand += " --outSAMtype BAM SortedByCoordinate ";
+		STARcommand += " --limitBAMsortRAM "+this.memory;
 
 		try {
 			ExtendedReader ER = new ExtendedReader(
@@ -229,6 +243,10 @@ public class STAR {
 			E.printStackTrace();
 		}
 
+		EW.println("module load bioinfo-tools");
+		EW.println("module load star");
+		
+		
 		EW.println("echo START");
 		EW.println("echo using parameters from file " + parameterFile);
 		EW.println();

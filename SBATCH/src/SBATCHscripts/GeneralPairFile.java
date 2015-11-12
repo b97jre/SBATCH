@@ -134,7 +134,7 @@ public class GeneralPairFile {
 			IOTools.mkDir(outDir + "/scripts");
 
 		generalFile(T, generalSbatchScript, sbatch, inDir, outDir,
-				inFile1, inFile2);
+				inFile1, inFile2,Functions.getCommonPrefix(inFile1, inFile2));
 	}
 
 	public void generalDir(Hashtable<String, String> T,
@@ -162,7 +162,7 @@ public class GeneralPairFile {
 				if (pairs.size() != 0) {
 					for (int i = 0; i < pairs.size(); i++){
 						generalFile(T, generalSbatchScript, sbatch,
-								inDir, outDir, pairs.get(i)[0],pairs.get(i)[1]);
+								inDir, outDir, pairs.get(i)[0],pairs.get(i)[1], pairs.get(i)[2]);
 					}
 				}
 			}catch (Exception E) {
@@ -178,7 +178,7 @@ public class GeneralPairFile {
 
 		public void generalFile(Hashtable<String, String> T,
 				ExtendedWriter generalSbatchScript, SBATCHinfo sbatch,
-				String inDir, String outDir, String fileName1, String fileName2) {
+				String inDir, String outDir, String fileName1, String fileName2,String nameBase) {
 
 			String programName = Functions.getValue(T, "-program",Functions.getValue(T, "-p","help"));
 			Programs program = Programs.valueOf(programName.toUpperCase());
@@ -188,7 +188,7 @@ public class GeneralPairFile {
 				STAR star = new STAR();
 				if(star.addParameters(T,sbatch)){
 					star.STARFile(generalSbatchScript, sbatch, new File(inDir).getAbsolutePath(), outDir,
-							fileName1,fileName2);
+							fileName1,fileName2, nameBase);
 				}
 				break;
 			case TRIMFASTQFILES:

@@ -135,6 +135,7 @@ public class SBATCHinfo {
 		core = Functions.getInt(T,"-core", 1);
 
 		memory = Functions.getInt(T,"-memory",8);
+		
 
 
 		milou = true;
@@ -1053,8 +1054,9 @@ public class SBATCHinfo {
 	}
 
 	public int getMemoryPadded() {
+		int memory = getMemory();
 		if(memory < 10)
-			return memory-1;
+			return memory;
 		return memory-3;
 	}
 

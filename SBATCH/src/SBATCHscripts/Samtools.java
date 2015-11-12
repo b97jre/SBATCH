@@ -342,6 +342,19 @@ public class Samtools {
 		String nameBase = samFile;
 		if (samFile.endsWith(".sam"))
 			nameBase = samFile.substring(0, samFile.lastIndexOf(suffix));
+		
+		return sam2bam(EW, samFile, f, F,q,sort,header,view,flagstat,index,nameBase);
+		
+		 
+		
+	}
+	public static String sam2bam(ExtendedWriter EW, String samFile, int f,
+			int F, int q, boolean sort, boolean header, boolean view,
+			boolean flagstat, boolean index,String nameBase) {
+		
+		
+		
+ 
 		EW.println();
 		EW.println("module load bioinfo-tools");
 		EW.println("module load samtools");
@@ -370,9 +383,11 @@ public class Samtools {
 			} else {
 				EW.println(" -o " + nameBase + ".bam " + samFile);
 			}
+			EW.println("rm "+samFile);
 			if (sort) {
 				EW.println("samtools sort " + nameBase + ".bam " + nameBase
 						+ ".sorted ");
+				EW.println("rm "+nameBase + ".bam ");
 				nameBase = nameBase + ".sorted";
 			}
 			if (index) {
@@ -391,6 +406,16 @@ public class Samtools {
 		}
 		return null;
 	}
+	
+	public static void index(ExtendedWriter EW, String bamFile) {
+		
+		EW.println();
+		EW.println("module load bioinfo-tools");
+		EW.println("module load samtools");
+		EW.println("samtools index " + bamFile);
+	}
+	
+	
 
 	
 	public static String mpileUp(ExtendedWriter EW, String reference, String bamFile, String flags) {

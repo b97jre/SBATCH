@@ -130,7 +130,7 @@ public class GeneralOneFile {
 				System.out.println("folder: " + folder);
 				System.out.println("fileName: " + fileName);
 
-				generalFileInitial(T, EW, sbatch, timeStamp, folder, folder,
+				generalFileInitial(T, EW, sbatch, timeStamp, folder, outDir,
 						fileName);
 			}
 
@@ -228,6 +228,7 @@ public class GeneralOneFile {
 				Blast blast = new Blast(T); 
 				blast.run(T, generalSbatchScript, sbatch, timestamp, inDir, outDir,
 						fileName,suffix);
+				T.put("-q", "test");
 				break;
 			case CUTADAPT:
 				CutAdapt CA = new CutAdapt();
