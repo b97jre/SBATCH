@@ -40,47 +40,18 @@ public class Script {
 		filter.run(T);
 	}
 
-	public void run(Hashtable<String, String> T) {
 
-		boolean allPresent = true;
-
-		String timeStamp = Functions
-				.getValue(T, "-TS", Functions.getDateTime());
-		SBATCHinfo sbatch = new SBATCHinfo();
-		if (!sbatch.addSBATCHinfo(T))
-			allPresent = false;
-
-		if (T.containsKey("-node"))
-			core = false;
-
+	public void run(SBATCHinfo sbatch,Hashtable<String, String> T) {
+		projectDir = Functions.getValue(T, "-wd", IOTools.getCurrentPath());
 		if (T.containsKey("-i"))
 			inFile = Functions.getValue(T, "-i");
-		else {
-			System.out.println("must contain inDirectory -i");
-			allPresent = false;
+		else{ 
+			System.out.println("must contain script file");
+			System.out.println("\n\nAborting run because of missing arguments for script.");
+			return;
 		}
-		projectDir = Functions.getValue(T, "-d", IOTools.getCurrentPath());
-		parameters = Functions.getValue(T, "-parameters", "");
 
-		if (T.containsKey("-time"))
-			time = Functions.getValue(T, "-time");
-		else {
-			System.out.println("time is not set. Now set to default 15:00");
-			time = Functions.getValue(T, "-time", "15:00");
-		}
-		if (allPresent)
-			shellScript(sbatch, timeStamp);
-		else
-			System.out
-					.println("\n\nAborting run because of missing arguments for script.");
-	}
-
-	public void shellScript(SBATCHinfo sbatch, String timeStamp) {
 		try {
-			if (!IOTools.isDir(projectDir + "/scripts"))
-				IOTools.mkDir(projectDir + "/scripts");
-			if (!IOTools.isDir(projectDir + "/reports"))
-				IOTools.mkDir(projectDir + "/reports");
 			String info1 = null;
 			if (inFile.indexOf("/") > -1) {
 				String[] info = inFile.split("/");
@@ -88,40 +59,26 @@ public class Script {
 			} else {
 				info1 = inFile;
 			}
-			ExtendedWriter EW = new ExtendedWriter(new FileWriter(projectDir
-					+ "/scripts/" + timeStamp + "_" + info1 + ".sbatch"));
-			shellScript(EW, sbatch, timeStamp);
+			ExtendedWriter EW = sbatch.printSBATCHInfoSTART(info1);
+			ExtendedReader ER  = ExtendedReader.getFileReader(inFile);
+			while(ER.more()){
+				EW.println(ER.readLine());
+			}
+			ER.close();
+			EW.println();
+			EW.println();
+			EW.println("Shell script copied from "+new File(inFile).getAbsolutePath());
+			
 			EW.flush();
 			EW.close();
+			String sbatchFileName = sbatch.getSbatchFileName(info1);
+			
+			System.out.println("Information writtend to "+sbatchFileName);
 		} catch (Exception E) {
 			E.printStackTrace();
 		}
+		
 	}
 
-	public void shellScript(ExtendedWriter EW, SBATCHinfo sbatch,
-			String timestamp) {
-		String info1 = null;
-		if (inFile.indexOf("/") > -1) {
-			String[] info = inFile.split("/");
-			info1 = info[info.length - 1];
-		} else {
-			info1 = inFile;
-		}
-			sbatch.printSBATCHinfo(EW, projectDir, timestamp, info1, "script");
-
-		EW.println("cd " + this.projectDir);
-		EW.println();
-		EW.println();
-		EW.println("sh " + inFile + " " + parameters);
-		EW.println("echo \" Shellscript can be found here: " + projectDir
-				+ "/reports/" + 0 + "_inFile_" + timestamp + ".shellScript\"");
-		EW.println("echo \" Parameters added were: " + parameters + "\"");
-		try {
-			IOTools.copy(inFile, projectDir + "/reports/" + 0 + "_inFile_"
-					+ timestamp + ".shellScript");
-		} catch (Exception E) {
-			E.printStackTrace();
-		}
-	}
 
 }

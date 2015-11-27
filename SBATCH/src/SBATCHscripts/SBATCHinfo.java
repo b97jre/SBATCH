@@ -322,7 +322,7 @@ public class SBATCHinfo {
 			break;
 		case SCRIPT:
 			Script script = new Script();
-			script.run(T);
+			script.run(this,T);
 			break;
 		case MERGE:
 			Merge merge = new Merge();
