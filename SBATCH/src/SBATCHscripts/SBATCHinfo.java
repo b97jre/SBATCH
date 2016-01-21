@@ -26,6 +26,8 @@ public class SBATCHinfo {
 
 	public boolean interactive; 
 	boolean milou;
+	
+	private String webExportPath;
 
 	String jarPath;
 	String fileParserJarFile;
@@ -37,10 +39,9 @@ public class SBATCHinfo {
 
 	public static void main(String[] args) {
 
-		int length = args.length;
 
-
-		System.out.println("Current flags:");
+		// System.out.println("Current flags:");
+		// int length = args.length;
 		//		for (int i = 0; i < length; i++) {
 		//			args[i] = args[i].trim();
 		//			System.out.print(args[i] + " ");
@@ -111,6 +112,8 @@ public class SBATCHinfo {
 
 
 	public SBATCHinfo() {
+		this.milou = true;
+		
 
 	}
 
@@ -238,10 +241,10 @@ public class SBATCHinfo {
 			deNovoAssembly deNovoAssembly = new deNovoAssembly();
 			deNovoAssembly.run(T);
 			break;
-		case DENOVOANALYSIS:
-			AnnotateRNA analyze = new AnnotateRNA(T);
+//		case DENOVOANALYSIS:
+//			AnnotateRNA analyze = new AnnotateRNA(T);
 //			analyze.run(T,this);
-			break;
+//			break;
 		case EXTENSION:
 			deNovoExtension deNovoExtension = new deNovoExtension();
 			deNovoExtension.run(T);
@@ -619,7 +622,7 @@ public class SBATCHinfo {
 					+ "_" +new File(inDir).getName()+ "_"+timeStamp +".sbatch";			
 			System.out.println("Creating sbatch_file :"+sbatchFile);
 			ExtendedWriter EW = ExtendedWriter.getFileWriter(sbatchFile);
-			this.printSBATCHinfo(EW, inDir, timeStamp, 0, program);
+			this.printSBATCHinfo(EW, inDir, timeStamp, program);
 
 			EW.println("cd "+inDir);
 			return EW;
@@ -839,6 +842,14 @@ public class SBATCHinfo {
 			printSBATCHinfohalvan(EW,directory,timestamp, String.valueOf(ID), program);
 	}
 
+	public void printSBATCHinfo(ExtendedWriter EW, String directory,
+			String timestamp, String program) {
+
+		if(memory <= 512)
+			printSBATCHinfoCore(EW,directory,timestamp, program);
+		else
+			printSBATCHinfohalvan(EW,directory,timestamp,null, program);
+	}
 
 
 	public void printSBATCHinfo(ExtendedWriter EW, String directory,
@@ -866,6 +877,10 @@ public class SBATCHinfo {
 
 		EW.println("#! /bin/bash -l");
 	}
+	private void printSBATCHinfoCore(ExtendedWriter EW, String directory,
+			String timestamp, String program) {
+		printSBATCHinfoCore(EW,directory,timestamp,null,program);
+	}
 	
 	private void printSBATCHinfoCore(ExtendedWriter EW, String directory,
 			String timestamp, String ID, String program) {
@@ -873,8 +888,10 @@ public class SBATCHinfo {
 		if (!IOTools.isDir(directory + "/reports")) {
 			IOTools.mkDir(directory + "/reports");
 		}
-
-		String jobName = ID + "_" + program + "_" + timestamp;
+		
+		String jobName =  program + "_" + timestamp;
+		if(ID != null)
+			jobName = ID + "_" + program + "_" + timestamp;
 
 		EW.println("#! /bin/bash -l");
 		EW.println("#SBATCH -A " + projectNumber);
@@ -887,9 +904,9 @@ public class SBATCHinfo {
 		EW.println("#SBATCH -t " + time);
 		EW.println("#SBATCH -J " + jobName);
 		EW.println("#SBATCH -e " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stderr.txt");
+				+ "_SLURM_Job_id_%j.stderr.txt");
 		EW.println("#SBATCH -o " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stdout.txt");
+				+ "_SLURM_Job_id_%j.stdout.txt");
 
 		if (email != null) {
 			EW.println("#SBATCH --mail-type=FAIL");
@@ -933,7 +950,9 @@ public class SBATCHinfo {
 		int nrofnodes = (memory-1) / 32 + 1;
 		System.out.println("Work will be placed on halvan");
 		System.out.println("Memory allocated will be " +nrofnodes * 32 + " GB");
-		String jobName = ID + "_" + program + "_" + timestamp;
+		String jobName = program + "_" + timestamp;
+		if(ID != null)
+			jobName = ID + "_" + program + "_" + timestamp;
 
 		EW.println("#! /bin/bash -l");
 		EW.println("#SBATCH -A " + projectNumber);
@@ -943,9 +962,9 @@ public class SBATCHinfo {
 		EW.println("#SBATCH -t " + time);
 		EW.println("#SBATCH -J " + jobName);
 		EW.println("#SBATCH -e " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stderr.txt");
+				+ "_SLURM_Job_id_%j.stderr.txt");
 		EW.println("#SBATCH -o " + directory + "/reports/" + jobName
-				+ "_SLURM_Job_id=%j.stdout.txt");
+				+ "_SLURM_Job_id_%j.stdout.txt");
 
 		if (email != null) {
 			EW.println("#SBATCH --mail-type=FAIL");
@@ -1106,6 +1125,34 @@ public class SBATCHinfo {
 
 	public void addAfterAny(ArrayList<Integer>projNumbers){
 		this.afterany = projNumbers;
+	}
+
+
+
+
+	public int getCore() {
+		return core;
+	}
+
+
+
+
+	public void setCore(int core) {
+		this.core = core;
+	}
+
+
+
+
+	public String getWebExportPath() {
+		return webExportPath;
+	}
+
+
+
+
+	public void setWebExportPath(String webExportPath) {
+		this.webExportPath = webExportPath;
 	}
 
 
